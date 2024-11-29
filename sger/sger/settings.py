@@ -99,7 +99,16 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
-STATIC_URL = 'static/'
+
+STATIC_URL = '/static/'
+
+# Defina o diretório onde os arquivos estáticos serão coletados para produção
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Adicione o diretório de arquivos estáticos adicionais (por exemplo, para CSS, JS personalizados)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
