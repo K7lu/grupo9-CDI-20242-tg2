@@ -1,3 +1,6 @@
+{% extends 'base.html' %}
+{% block content %}
+
 <!-- clients/templates/clients/home.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -9,5 +12,12 @@
 <body>
     <h1>Bem-vindo à página inicial!</h1>
     <p>Este é o conteúdo da página inicial do sistema SGER.</p>
+
+    <!-- Link para a página de cadastro de funcionários -->
+    <div>
+        <a href="{% url 'employee_registration' %}" class="btn btn-primary">Cadastrar Funcionário</a>
+    </div>
 </body>
 </html>
+
+{% endblock %}

@@ -1,0 +1,38 @@
+/* static/css/styles.css */
+
+/* Ensuring the footer stays at the bottom of the page */
+html, body {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+footer {
+    background-color: #003366;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    width: 100%;
+}
+
+.navbar {
+    background: linear-gradient(45deg, #003366, #003366 25%, #336699 25%, #336699 50%, #003366 50%, #003366 75%, #336699 75%, #336699);
+}
+
+.navbar-brand {
+    color: white !important;
+}
+
+.navbar-light .navbar-toggler-icon {
+    background-color: white;
+}
+
+.container-fluid {
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
