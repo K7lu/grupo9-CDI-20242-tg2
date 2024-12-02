@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h1 class="display-4 text-primary">Cadastro de Funcionários</h1>
+    <p class="lead">Preencha o formulário abaixo para registrar um novo funcionário.</p>
+
+    <div class="form-container mx-auto mt-4">
+        <form method="POST" action="{% url 'employee_registration' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="name">Nome Completo</label>
+                <input type="text" class="form-control" id="name" name="nome" maxlength="100" required>
+            </div>
+            <div class="form-group">
+                <label for="cpf">CPF</label>
+                <input type="text" class="form-control" id="cpf" name="cpf" pattern="\d{11}" title="Digite 11 dígitos" required>
+            </div>
+            <div class="form-group">
+                <label for="hire_date">Data de Contratação</label>
+                <input type="date" class="form-control" id="hire_date" name="data_contratacao">
+            </div>
+            <div class="form-group">
+                <label for="phone">Telefone</label>
+                <input type="text" class="form-control" id="phone" name="telefone" maxlength="20">
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-block">Registrar</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
