@@ -1,0 +1,105 @@
+CREATE DATABASE IF NOT EXISTS sger_db;
+USE sger_db;
+
+-- Tabela Cliente
+CREATE TABLE IF NOT EXISTS Cliente (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Nome VARCHAR(100) NOT NULL,
+    CNPJ CHAR(14) UNIQUE NOT NULL,
+    Endereco VARCHAR(255),
+    Telefone VARCHAR(20)
+);
+
+-- Tabela Projeto
+CREATE TABLE IF NOT EXISTS Projeto (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Nome VARCHAR(100) NOT NULL,
+    Descricao TEXT,
+    Data_Inicio DATE,
+    Data_Termino DATE,
+    Cliente_ID INT NOT NULL,
+    FOREIGN KEY (Cliente_ID) REFERENCES Cliente(ID) -- associação com cliente 
+);
+
+-- Tabela Recurso
+CREATE TABLE IF NOT EXISTS Recurso (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Nome VARCHAR(100) NOT NULL,
+    Tipo VARCHAR(50) NOT NULL
+);
+
+-- Tabela Alocacao_Recursos (liga recursos a projetos)
+CREATE TABLE IF NOT EXISTS Alocacao_Recursos (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Recurso_ID INT NOT NULL,
+    Projeto_ID INT NOT NULL,
+    Quantidade INT NOT NULL,
+    FOREIGN KEY (Recurso_ID) REFERENCES Recurso(ID), -- associação com recurso
+    FOREIGN KEY (Projeto_ID) REFERENCES Projeto(ID) -- associação com projeto
+);
+
+-- Tabela Tarefa
+CREATE TABLE IF NOT EXISTS Tarefa (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Descricao TEXT NOT NULL,
+    Data_Inicio DATE,
+    Data_Termino DATE,
+    Status VARCHAR(20),
+    Projeto_ID INT NOT NULL,
+    FOREIGN KEY (Projeto_ID) REFERENCES Projeto(ID) -- associação com projeto
+);
+
+-- Tabela Funcionario
+CREATE TABLE IF NOT EXISTS Funcionario (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Nome VARCHAR(100) NOT NULL,
+    CPF CHAR(11) UNIQUE NOT NULL,
+    Data_Contratacao DATE,
+    Telefone VARCHAR(20)
+);
+
+-- Tabela Efetivo (subtipo de funcionario)
+CREATE TABLE IF NOT EXISTS Efetivo (
+    ID INT PRIMARY KEY,
+    Salario DECIMAL(10, 2) NOT NULL,
+    Beneficios TEXT,
+    FOREIGN KEY (ID) REFERENCES Funcionario(ID) -- associação com funcionario
+);
+
+-- Tabela Terceirizado (subtipo de funcionario)
+CREATE TABLE IF NOT EXISTS Terceirizado (
+    ID INT PRIMARY KEY,
+    Empresa VARCHAR(100) NOT NULL,
+    Valor_Hora DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (ID) REFERENCES Funcionario(ID) -- associação com funcionario
+);
+
+-- Tabela Alocacao
+CREATE TABLE IF NOT EXISTS Alocacao (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Funcionario_ID INT NOT NULL,
+    Projeto_ID INT NOT NULL,
+    Data_Inicio DATE NOT NULL,
+    Data_Termino DATE,
+    FOREIGN KEY (Funcionario_ID) REFERENCES Funcionario(ID), -- associação com funcionario
+    FOREIGN KEY (Projeto_ID) REFERENCES Projeto(ID)
+);
+
+-- Tabela Departamento
+CREATE TABLE IF NOT EXISTS Departamento (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Nome VARCHAR(100) NOT NULL,
+    Responsavel_ID INT, -- chave estrangeira p/ funcionario
+    FOREIGN KEY (Responsavel_ID) REFERENCES Funcionario(ID) -- associação com funcionario
+);
+
+-- Tabela Cliente_Contato
+CREATE TABLE IF NOT EXISTS Cliente_Contato (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    Nome VARCHAR(100) NOT NULL,
+    Cargo VARCHAR(50),
+    Email VARCHAR(150),
+    Telefone VARCHAR(20),
+    Cliente_ID INT NOT NULL, -- chave estrangeira p/ cliente
+    FOREIGN KEY (Cliente_ID) REFERENCES Cliente(ID) -- associação com cliente
+);
