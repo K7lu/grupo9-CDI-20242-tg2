@@ -106,11 +106,20 @@ footer {
     
         cursor: pointer;
         margin: 5px;
-        font-size: 20px;
-        float: right;
         color: #db1e47
     }
+    .fas.fa-edit{
     
+        cursor: pointer;
+        margin: 5px;
+        color: #0f8300
+    }
+    /* Adicione isso ao seu arquivo CSS (por exemplo, styles.css) */
+    .alert-info {
+        background-color: #003268;  /* Cor azul */
+        color: white(255, 255, 255);  /* Texto branco */
+        border-color: #0056b3;  /* Borda azul mais escura */
+    }
     .input-label {
         display: inline-block;
         width: 140px; /* Largura fixa para os rótulos */
@@ -135,6 +144,58 @@ footer {
     .input-field:focus {
         border-color: #007bff; /* Muda a cor da borda ao focar */
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Adiciona uma sombra ao focar */
+    }
+    .input-group {
+        max-width: 600px; /* Aumenta o tamanho da área de pesquisa */
+        margin: 0 auto 20px; /* Centraliza a área de pesquisa e dá espaçamento inferior */
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .input-group input {
+        flex: 1; /* Faz o campo de pesquisa ocupar o espaço disponível */
+        padding: 10px 15px; /* Aumenta o espaço interno do campo de pesquisa */
+        font-size: 16px; /* Aumenta o tamanho da fonte */
+        border: 2px solid #ccc; /* Borda mais suave */
+        border-radius: 25px; /* Borda arredondada */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Adiciona uma leve sombra */
+        transition: border-color 0.3s ease-in-out; /* Adiciona uma transição suave ao foco */
+    }
+    
+    .input-group input:focus {
+        border-color: #007bff; /* Mudança de cor da borda ao focar no campo */
+        outline: none; /* Remove o contorno padrão */
+    }
+    
+    .input-group button {
+        background-color: #003268; /* Cor de fundo do botão */
+        color: white; /* Cor do texto no botão */
+        border: none;
+        border-radius: 25px; /* Borda arredondada no botão */
+        padding: 11px 20px; /* Espaçamento interno do botão */
+        font-size: 16px; /* Tamanho da fonte no botão */
+        cursor: pointer; /* Aparece como um ponteiro ao passar o mouse */
+        transition: background-color 0.3s ease-in-out; /* Transição suave no fundo do botão */
+    }
+    
+    .input-group button:hover {
+        background-color: #0056b3; /* Cor do botão ao passar o mouse */
+    }
+    
+    .input-group .input-group-text {
+        border-radius: 25px; /* Arredonda o contorno do texto (se usado) */
+    }
+    
+    @media (max-width: 768px) {
+        .input-group {
+            flex-direction: column; /* Torna os itens empilhados em telas menores */
+            align-items: stretch;
+        }
+        .input-group button {
+            width: 100%; /* O botão ocupa a largura total em telas pequenas */
+            margin-top: 10px; /* Espaçamento superior ao botão */
+        }
     }
     
     /* WEBCAM, BORDA E DESENHO PARA OLHOS */
