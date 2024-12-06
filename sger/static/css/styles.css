@@ -36,3 +36,336 @@ footer {
     padding-left: 2rem;
     padding-right: 2rem;
 }
+
+.nav-link {
+    color: black !important;
+    }
+    
+    .form-input {
+        margin-bottom: 10px;
+        margin-left: 10px;
+        text-align: left; 
+    }
+    
+    .form-label {
+        width: 150px;
+        display: inline-block;
+        text-align: left; 
+    }
+    
+    .form-field {
+        width: calc(50% - 130px);
+        vertical-align: middle;
+    }
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+    }
+    
+    .container {
+        margin-bottom: 20px;
+    }
+    
+    button {
+        padding: 10px 20px;
+        cursor: pointer;
+        margin: 10px;
+    }
+    
+    .column {
+        float: left;
+        box-sizing: border-box; 
+        padding: 20px;
+    }
+    
+    #column1 {
+        width: 10%;
+    }
+    
+    #column2 {
+        width: 90%;
+        padding: 20px;
+    }
+    
+    .column3 {
+        margin-right: 10px;
+        padding-top: 10px;
+        padding-left: 20px;
+        width: 60%;
+        float: left;
+    }
+    
+    .column4 {
+        margin-right: 10px;
+        padding-top: 10px;
+        padding-left: 50px;
+        width: 30%;
+        float: left;
+    }
+    .fas.fa-trash{
+    
+        cursor: pointer;
+        margin: 5px;
+        color: #db1e47
+    }
+    .fas.fa-edit{
+    
+        cursor: pointer;
+        margin: 5px;
+        color: #0f8300
+    }
+    /* Adicione isso ao seu arquivo CSS (por exemplo, styles.css) */
+    .alert-info {
+        background-color: #003268;  /* Cor azul */
+        color: white(255, 255, 255);  /* Texto branco */
+        border-color: #0056b3;  /* Borda azul mais escura */
+    }
+    .input-label {
+        display: inline-block;
+        width: 140px; /* Largura fixa para os rótulos */
+        margin-right: 10px; /* Espaçamento entre rótulos e campos */
+        margin-bottom: 10px;
+    }
+    
+    .input-field {
+        display: inline-block;
+        width: calc(90% - 140px); /* Calcula a largura do campo de entrada subtraindo a largura do rótulo e o espaçamento */
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc; /* Adiciona uma borda cinza */
+        border-radius: 4px; /* Adiciona bordas arredondadas */
+        background-color: #fff; /* Fundo branco */
+        font-size: 16px; /* Tamanho da fonte */
+        outline: none; /* Remove o contorno ao focar */
+        margin-bottom: 10px; /* Adiciona espaçamento inferior */
+        margin-right: 10px; /* Adiciona espaçamento direita */
+    }
+    
+    .input-field:focus {
+        border-color: #007bff; /* Muda a cor da borda ao focar */
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Adiciona uma sombra ao focar */
+    }
+    .input-group {
+        max-width: 600px; /* Aumenta o tamanho da área de pesquisa */
+        margin: 0 auto 20px; /* Centraliza a área de pesquisa e dá espaçamento inferior */
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .input-group input {
+        flex: 1; /* Faz o campo de pesquisa ocupar o espaço disponível */
+        padding: 10px 15px; /* Aumenta o espaço interno do campo de pesquisa */
+        font-size: 16px; /* Aumenta o tamanho da fonte */
+        border: 2px solid #ccc; /* Borda mais suave */
+        border-radius: 25px; /* Borda arredondada */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Adiciona uma leve sombra */
+        transition: border-color 0.3s ease-in-out; /* Adiciona uma transição suave ao foco */
+    }
+    
+    .input-group input:focus {
+        border-color: #007bff; /* Mudança de cor da borda ao focar no campo */
+        outline: none; /* Remove o contorno padrão */
+    }
+    
+    .input-group button {
+        background-color: #003268; /* Cor de fundo do botão */
+        color: white; /* Cor do texto no botão */
+        border: none;
+        border-radius: 25px; /* Borda arredondada no botão */
+        padding: 11px 20px; /* Espaçamento interno do botão */
+        font-size: 16px; /* Tamanho da fonte no botão */
+        cursor: pointer; /* Aparece como um ponteiro ao passar o mouse */
+        transition: background-color 0.3s ease-in-out; /* Transição suave no fundo do botão */
+    }
+    
+    .input-group button:hover {
+        background-color: #0056b3; /* Cor do botão ao passar o mouse */
+    }
+    
+    .input-group .input-group-text {
+        border-radius: 25px; /* Arredonda o contorno do texto (se usado) */
+    }
+    
+    @media (max-width: 768px) {
+        .input-group {
+            flex-direction: column; /* Torna os itens empilhados em telas menores */
+            align-items: stretch;
+        }
+        .input-group button {
+            width: 100%; /* O botão ocupa a largura total em telas pequenas */
+            margin-top: 10px; /* Espaçamento superior ao botão */
+        }
+    }
+    
+    /* WEBCAM, BORDA E DESENHO PARA OLHOS */
+    
+    #originalVideoContainer {
+        position: relative;
+        width: 180px; /* Largura do retângulo */
+        height: 240px; /* Altura do retângulo */
+        overflow: hidden; /* Oculta qualquer conteúdo fora da área definida */
+        border: 4px solid rgb(56, 65, 53); 
+    }
+    
+    .clippedVideo {
+        position: absolute;
+        top: 50%; /* Centraliza verticalmente */
+        left: 50%; /* Centraliza horizontalmente */
+        transform: translate(-50%, -50%) scale(2);
+        width: 320px; /* Largura do vídeo original */
+        height: 240px; /* Altura do vídeo original */
+    }
+    
+    .draw {
+        position: absolute;
+        border-top: 3px solid rgb(255, 0, 0);
+        z-index: 1;
+    }
+    .draw-line {
+        width: 72px; /* Comprimento da linha horizontal */
+        top: 45%;
+        left: 50%;
+        transform: translateX(-50%); /* Centraliza horizontalmente */
+    }
+    .draw-demicircle {
+        border-radius: 20px 20px 0px 0px; /* Formato de semicírculo com bordas arredondadas */
+        width: 40px; /* Largura do semicírculo */
+        height: 20px; /* Metade da altura do semicírculo */
+        top: 100px; /* vertical = 0 topo; 120 centro; 240 base; */
+    }
+    .draw-demicircle-left {
+        left: 45%; /* horizontal = 0% esquerda; 50 centro; 100% direita */
+        transform: translateX(-150%) rotate(-90deg); /* Centraliza horizontalmente */
+    }
+    .draw-demicircle-right {
+        left: 55%; /* horizontal = 0% esquerda; 50 centro; 100% direita */
+        transform: translateX(50%) rotate(90deg); /* Centraliza horizontalmente */
+    }
+    
+    /* CPF, VALIDAÇÃO */
+    
+    .cpf-input-container {
+        position: relative;
+    }
+    
+    .cpf-input {
+        flex: 1; 
+        padding: 8px;
+        box-sizing: border-box;
+    }
+    
+    .cpf-validation-icon {
+        position: absolute;
+        top: 45%;
+        right: 9%;
+        transform: translateY(-50%);
+        font-size: 18px;
+        color: #8c8d8c; 
+    } 
+    
+    /* LISTA SUSPENSA */
+    
+    .dropdown {
+        position: relative;
+        display: inline-block;
+      }
+      
+      /* Estilo para o botão ou link do dropdown */
+      .dropdown-btn {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px;
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+      }
+      
+      /* Estilo para o conteúdo do dropdown */
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: #f9f9f9;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+      }
+      
+      /* Estilo para os itens do dropdown */
+      .dropdown-content a {
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+      }
+      
+      /* Estilo para os itens do dropdown ao passar o mouse */
+      .dropdown-content a:hover {
+        background-color: #f1f1f1;
+      }
+      
+      /* Mostra o dropdown quando o botão/link é hover */
+      .dropdown:hover .dropdown-content {
+        display: block;
+      }
+      .ui-autocomplete {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 1000;
+        float: left;
+        display: none;
+        min-width: 160px;
+        padding: 4px 0;
+        margin: 2px 0 0 0;
+        list-style: none;
+        background-color: #ffffff;
+        border-color: #ccc;
+        border-color: rgba(0, 0, 0, 0.2);
+        border-style: solid;
+        border-width: 1px;
+        border-radius: 4px;
+        -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+    }
+    
+    .ui-menu-item {
+        display: block;
+        padding: 3px 20px;
+        clear: both;
+        font-weight: normal;
+        line-height: 1.42857143;
+        color: #333;
+        white-space: nowrap;
+    }
+    
+    .ui-menu-item:hover {
+        color: #262626;
+        text-decoration: none;
+        background-color: #f5f5f5;
+    }
+    
+    .ui-state-active,
+    .ui-widget-content .ui-state-active,
+    .ui-widget-header .ui-state-active {
+        color: #ffffff;
+        text-decoration: none;
+        background-color: #337ab7;
+        border: 1px solid #2e6da4;
+    }
+    
+    
+    .show {
+        display: block;
+    }
+    
+    ul.messages {
+        color: #8c8d8c;
+        padding: 0;
+    }
+    ul.messages li{
+        color: #8c8d8c;
+        list-style: none;
+        marker: none;
+    } 
+    .ui-helper-hidden-accessible { display:none; }
