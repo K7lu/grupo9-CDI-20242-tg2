@@ -58,8 +58,17 @@ def projects_list(request):
                 return cursor.fetchall()
 
     # Consulta para buscar todos os projetos
-    sql_select = "SELECT ID, Nome, Descricao, Data_Inicio, Data_Termino FROM Projeto ORDER BY Nome"
-    projects = executar_consulta(sql_select)
+    sql_select = """
+    SELECT 
+        Projeto.ID, Projeto.Nome, Projeto.Descricao, Projeto.Data_Inicio, Projeto.Data_Termino, Cliente.Nome AS Cliente_Nome
+    FROM 
+        Projeto
+    LEFT JOIN 
+        Cliente ON Projeto.Cliente_ID = Cliente.ID
+    ORDER BY 
+        Projeto.Nome
+    """
+    projects = executar_consulta(sql_select)    
 
     context = {
         'projects': projects  # 'projects' contém os dados retornados pela consulta SQL
