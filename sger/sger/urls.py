@@ -9,5 +9,5 @@ urlpatterns = [
     path('', views.home, name='home'), 
     path('clients/', include('clients.urls')),
     path('employee_registration/', views.employee_registration, name='employee_registration'),
-
+    path('projects/', include('projects.urls')),
 ]
