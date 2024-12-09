@@ -1,23 +1,27 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<!-- clients/templates/clients/home.html -->
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Página Inicial</title>
-</head>
-<body>
-    <h1>Bem-vindo à página inicial!</h1>
-    <p>Este é o conteúdo da página inicial do sistema SGER.</p>
+<div class="container text-center mt-5">
+    <h1 class="display-4 text-primary">Bem-vindo à Página Inicial!</h1>
+    <p class="lead mt-3">
+        Aqui na página inicial, você pode escolher entre as opções abaixo para gerenciar sua empresa!
+    </p>
 
-    <!-- Link para a página de cadastro de funcionários -->
-    <div>
-        <a href="{% url 'employee_registration' %}" class="btn btn-primary">Cadastrar Funcionário</a>
+    <div class="d-flex flex-column align-items-center mt-4">
+        <a href="{% url 'employee_registration' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar Funcionário</a>
+        <a href="{% url 'projects_manager' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar Projetos</a>
+        <a href="{% url 'department_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar Departamentos</a>
+        <a href="{% url 'clients_register' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar Clientes</a>
+        <a href="{% url 'clients_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar Clientes</a>
+        <div class="d-flex justify-content-center mt-4">
+            <a href="{% url 'tasks_manager' %}" 
+            class="btn btn-primary btn-lg text-dark" 
+            style="width: 300px; font-weight: bold;">
+                Alocações
+            </a>
+        </div>
     </div>
-</body>
-</html>
+
+</div>
 
 {% endblock %}

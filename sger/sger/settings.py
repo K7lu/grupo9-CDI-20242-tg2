@@ -110,6 +110,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Define o caminho para o diretório de mídia, onde arquivos de usuário podem ser armazenados
