@@ -30,7 +30,7 @@ def projects_register(request):
         """
         executar_consulta(sql_insert, [project_name, project_description, project_start_date, project_end_date, client_name])
 
-        return redirect('projects_register')
+        return redirect('projects_list')
     
     # Busca todos os projetos para exibir na página
     sql_select = """
