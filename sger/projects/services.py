@@ -1,5 +1,4 @@
 from .models import Project
-from django.db.models import Q
 
 def create_project(name, description, start_date, end_date):
     project = Project(
@@ -21,4 +20,4 @@ def get_project_by_name(partial_name):
         return None
 
 def get_all_projects():
-    return Porject.objects.all()
+    return Project.objects.all()

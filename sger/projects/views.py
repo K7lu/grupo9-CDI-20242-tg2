@@ -7,7 +7,6 @@ from clients.models import Client
 def projects_manager(request):
     return render(request, 'projects/home.html')
 
-
 def projects_register(request):
     # Função auxiliar para executar consultas SQL
     def executar_consulta(sql, parametros=None):
@@ -22,21 +21,20 @@ def projects_register(request):
         project_description = request.POST.get('entry_project_description')
         project_start_date = request.POST.get('entry_project_start_date')
         project_end_date = request.POST.get('entry_project_end_date')
-        client_nome = request.POST.get('entry_project_client')
+        client_name = request.POST.get('entry_project_client')
 
         # Insere o novo projeto na tabela
         sql_insert = """
         INSERT INTO Projeto (Nome, Descricao, Data_Inicio, Data_Termino, Cliente_ID)
         VALUES (%s, %s, %s, %s, %s)
         """
-        executar_consulta(sql_insert, [project_name, project_description, project_start_date, project_end_date, client_nome])
+        executar_consulta(sql_insert, [project_name, project_description, project_start_date, project_end_date, client_name])
 
+        return redirect('projects_register')
+    
     # Busca todos os projetos para exibir na página
     sql_select = """
-    SELECT p.ID, p.Nome, p.Descricao, p.Data_Inicio, p.Data_Termino, c.Nome AS Cliente
-    FROM Projeto p
-    JOIN Cliente c ON p.Cliente_ID = c.ID
-    ORDER BY p.Nome
+    SELECT  ID, Nome, Descricao, Data_Inicio, Data_Termino From Projeto ORDER BY Nome
     """
     projects = executar_consulta(sql_select)
 
@@ -63,11 +61,29 @@ def projects_list(request):
     sql_select = "SELECT ID, Nome, Descricao, Data_Inicio, Data_Termino FROM Projeto ORDER BY Nome"
     projects = executar_consulta(sql_select)
 
-    projects = {
+    context = {
         'projects': projects  # 'projects' contém os dados retornados pela consulta SQL
     }
     # Renderiza o template com a lista de projetos
-    return render(request, 'projects/projects_list.html', {'projectsList': projects})
+    return render(request, 'projects/projects_list.html', context)
+
+def projects_register_view(request):
+    # Função auxiliar para executar consultas SQL
+    def executar_consulta(sql, parametros=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, parametros or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Consulta para buscar todos os clientes
+    sql_select = "SELECT ID, Nome, Descricao, Data_inicio, Data_termino FROM Cliente ORDER BY Nome"
+    projects = executar_consulta(sql_select)
+
+    context = {
+        'projects': projects  # 'clients' contém os dados retornados pela consulta SQL
+    }
+    # Renderiza o template com a lista de clientes
+    return render(request, 'porjects/projects_register.html', {'projectsList': context})
 
 def projects_search_view(request):
     # Função auxiliar para executar consultas SQL
