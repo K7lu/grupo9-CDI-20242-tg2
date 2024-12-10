@@ -23,9 +23,9 @@ def tasks_register(request):
         task_status = request.POST.get('entry_task_status')
         project_name = request.POST.get('entry_task_project')
 
-        # Insere o novo projeto na tabela
+        # Insere a nova tarefa na tabela
         sql_insert = """
-        INSERT INTO Projeto (Descricao, Data_Inicio, Data_Termino, Status, Projeto_ID)
+        INSERT INTO Tarefa (Descricao, Data_Inicio, Data_Termino, Status, Projeto_ID)
         VALUES (%s, %s, %s, %s, %s)
         """
         executar_consulta(sql_insert, [task_description, task_start_date, task_end_date, task_status, project_name])
@@ -66,7 +66,7 @@ def tasks_list(request):
     LEFT JOIN 
         Projeto ON Tarefa.Projeto_ID = Projeto.ID
     ORDER BY 
-        Tarefa.Nome
+        Projeto.Nome
     """
     tasks = executar_consulta(sql_select)    
 
