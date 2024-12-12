@@ -21,7 +21,6 @@ def clients_list(request):
         client_adress = request.POST.get('entry_client_address')
         client_phone = request.POST.get('entry_client_phone')
 
-
         # Insere o novo cliente na tabela
         sql_insert = """
         INSERT INTO Cliente (Nome, CNPJ, Endereco, Telefone)

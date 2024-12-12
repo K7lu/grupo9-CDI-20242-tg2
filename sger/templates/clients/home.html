@@ -8,20 +8,31 @@
     </p>
 
     <div class="d-flex flex-column align-items-center mt-4">
-        <a href="{% url 'employee_registration' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar Funcionário</a>
-        <a href="{% url 'projects_manager' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar Projetos</a>
-        <a href="{% url 'department_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar Departamentos</a>
-        <a href="{% url 'clients_register' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar Clientes</a>
-        <a href="{% url 'clients_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar Clientes</a>
+        <a href="{% url 'employee_registration' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar
+            Funcionário</a>
+        <a href="{% url 'tasks_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar
+            Tarefas</a>
+        <a href="{% url 'tasks_register' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar
+            Tarefas</a>            
+        <a href="{% url 'projects_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar
+            Projetos</a>
+        <a href="{% url 'projects_register' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar
+            Projetos</a>
+        <a href="{% url 'department_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar
+            Departamentos</a>
+        <a href="{% url 'clients_register' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Cadastrar
+            Clientes</a>
+        <a href="{% url 'clients_list' %}" class="btn btn-success btn-lg mb-3" style="width: 250px;">Gerenciar
+            Clientes</a>
+
         <div class="d-flex justify-content-center mt-4">
-            <a href="{% url 'tasks_manager' %}" 
-            class="btn btn-primary btn-lg text-dark" 
-            style="width: 300px; font-weight: bold;">
+            <a href="{% url 'tasks_manager' %}" class="btn btn-primary btn-lg text-dark"
+                style="width: 300px; font-weight: bold;">
                 Alocações
             </a>
         </div>
     </div>
 
-</div>
+</div>s
 
 {% endblock %}
