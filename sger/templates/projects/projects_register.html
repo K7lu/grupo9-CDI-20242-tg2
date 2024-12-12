@@ -8,7 +8,7 @@
     </div>
     <div class="column" id="column2">
         <div class="column3">
-            <form action="{% url 'projects_register' %}" method="post" enctype="multipart/form-data">
+            <form action="{% url 'projects_list' %}" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
 
                 <label class="input-label" for="entry_project_name">Nome:</label>
