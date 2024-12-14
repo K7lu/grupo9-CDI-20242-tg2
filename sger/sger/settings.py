@@ -13,6 +13,15 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# URL para onde redirecionar usuários não autenticados
+LOGIN_URL = '/login/'
+
+# URL para redirecionar após login bem-sucedido
+LOGIN_REDIRECT_URL = '/clients/'  # Altere para a rota desejada após o login
+
+# URL para redirecionar após logout
+LOGOUT_REDIRECT_URL = '/login/'
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
