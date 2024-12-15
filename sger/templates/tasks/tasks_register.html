@@ -26,9 +26,12 @@
                     required><br>
 
                 <label class="input-label" for="entry_task_status">Situação:</label>
-                <input class="input-field" type="text" id="entry_task_status" name="entry_task_status"
-                    placeholder="Digite a situação..." maxlength="150" required><br>
-
+                <select class="input-field" id="entry_task_status" name="entry_task_status" required>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Em andamento">Em andamento</option>
+                    <option value="Pronta">Pronta</option>
+                </select><br>
+                
                 <label class="input-label" for="entry_task_project">Projeto:</label>
                 <select class="input-field" id="entry_task_project" name="entry_task_project" required>
                     {% for project in projects %}

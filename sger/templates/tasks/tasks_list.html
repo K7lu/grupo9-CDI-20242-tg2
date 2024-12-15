@@ -81,10 +81,14 @@
                             required>
                     </div>
                     <div class="mb-3">
-                        <label for="nome" class="form-label">Status</label>
-                        <input type="text" class="form-control" id="status" name="status" value="{{ task.4 }}" required
-                            maxlength="100">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-control" id="status" name="status" required>
+                            <option value="Pendente" {% if task.4 == "Pendente" %}selected{% endif %}>Pendente</option>
+                            <option value="Em andamento" {% if task.4 == "Em andamento" %}selected{% endif %}>Em andamento</option>
+                            <option value="Pronta" {% if task.4 == "Pronta" %}selected{% endif %}>Pronta</option>
+                        </select>
                     </div>
+                    
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
