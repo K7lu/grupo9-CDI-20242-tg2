@@ -105,15 +105,7 @@ def projects_search_view(request):
     # Pega o termo de pesquisa (caso exista)
     search_term = request.GET.get('search_term', '').strip()
 
-    # Consulta para buscar todos os projetos, ou aplicar filtro de pesquisa se necessário
-    sql_select = """
-        SELECT ID, Nome, Descricao, Data_Inicio, Data_Termino
-        FROM Projeto
-        WHERE Nome LIKE %s OR Descricao LIKE %s OR Data_Inicio LIKE %s OR Data_Termino LIKE %s
-        ORDER BY Nome
-    """
-
-    # Parâmetros de pesquisa
+    # Corâmetros de pesquisa
     parametros = [f'%{search_term}%', f'%{search_term}%', f'%{search_term}%', f'%{search_term}%']
 
     projects = executar_consulta(sql_select, parametros)

@@ -4,6 +4,12 @@ function clearClientData() {
     document.getElementById("entry_client_address").value = "";
     document.getElementById("entry_client_phone").value = "";
 }
+
+function clearDepartmentData() {
+    document.getElementById("entry_department_name").value = "";
+    document.getElementById("entry_responsible_employee").value = "";
+}
+
 document.addEventListener("DOMContentLoaded", function () {
     window.maskCNPJ = function (cnpj) {
         var value = cnpj.value.replace(/\D/g, ""); // Remove tudo que não for número
