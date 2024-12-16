@@ -82,11 +82,11 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
-def format_cpf_cnpj(value):
-    """
-    Remove a formatação do CPF ou CNPJ (pontos e traços).
-    """
-    return re.sub(r'\D', '', value)
+def validate_cnpj(cnpj):
+    cnpj = re.sub(r'\D', '', cnpj)  # Remove qualquer caractere não numérico
+    if len(cnpj) != 14:
+        raise ValueError("O CNPJ deve conter exatamente 14 dígitos.")
+    return cnpj
 
 def validate_cpf_cnpj(value, is_cpf=True):
     """
@@ -356,17 +356,41 @@ def usuarios_view(request):
 
 #---------------------------------#
 # Funções para gerenciamento de clientes
+
 @login_required
 @role_required('Master', 'Administradores', 'Funcionarios')
 def clients_list(request):
-    storage = messages.get_messages(request)
-    storage.used = True
     """
     Lista todos os clientes cadastrados no sistema.
     """
-    sql_select = "SELECT ID, Nome, CNPJ, Endereco, Telefone FROM Cliente ORDER BY Nome"
+    sql_select = """
+        SELECT ID, Nome, CNPJ, Endereco, Telefone 
+        FROM Cliente
+        ORDER BY Nome
+    """
     clients = execute_query(sql_select)
-    return render(request, 'sger/clientes/clients_list.html', {'clients': clients})
+
+    # Aplica a formatação diretamente na view
+    formatted_clients = []
+    for client in clients:
+        formatted_cnpj = (
+            f"{client[2][:2]}.{client[2][2:5]}.{client[2][5:8]}/{client[2][8:12]}-{client[2][12:]}"
+            if client[2] and len(client[2]) == 14
+            else client[2]
+        )
+        formatted_phone = (
+            f"({client[4][:2]}) {client[4][2:7]}-{client[4][7:]}"
+            if client[4] and len(client[4]) == 11
+            else f"({client[4][:2]}) {client[4][2:6]}-{client[4][6:]}"
+            if client[4] and len(client[4]) == 10
+            else client[4]
+        )
+        formatted_clients.append(
+            (client[0], client[1], formatted_cnpj, client[3], formatted_phone)
+        )
+
+    return render(request, 'sger/clientes/clients_list.html', {'clients': formatted_clients})
+
 
 
 @login_required
@@ -392,6 +416,12 @@ def edit_client_view(request, client_id):
         endereco = request.POST.get('endereco')
         telefone = request.POST.get('telefone')
 
+        try:
+            cnpj = validate_cnpj(cnpj)  # Validação do CNPJ
+        except ValueError as e:
+            messages.error(request, str(e))
+            return redirect('edit_client', client_id=client_id)
+        
         # Atualiza o cliente no banco de dados
         sql_update = """
         UPDATE Cliente
@@ -615,34 +645,37 @@ def contacts_view(request):
     """
     search_term = request.GET.get('search_term', '').strip()
 
-    # Consulta SQL para listar contatos com base na pesquisa ou todos se não houver filtro
+    # Consulta SQL ajustada para combinar dados de Cliente e auth_user
     sql_select_contacts = """
     SELECT 
-        auth_user.id, 
-        auth_user.first_name, 
-        auth_user.last_name, 
-        auth_user.email, 
-        Cliente.Telefone 
+        Cliente.ID, 
+        Cliente.Nome AS first_name,
+        auth_user.email,
+        Cliente.Telefone
     FROM 
-        auth_user
+        Cliente
     LEFT JOIN 
-        Cliente ON auth_user.id = Cliente.id
+        auth_user ON Cliente.Nome = CONCAT(auth_user.first_name, ' ', auth_user.last_name)
     WHERE 
-        auth_user.first_name LIKE %s OR 
-        auth_user.last_name LIKE %s OR 
+        Cliente.Nome LIKE %s OR 
         auth_user.email LIKE %s OR 
         Cliente.Telefone LIKE %s
     ORDER BY 
-        auth_user.first_name
+        Cliente.Nome
     """
-    parametros = [f'%{search_term}%', f'%{search_term}%', f'%{search_term}%', f'%{search_term}%']
+
+    # Parâmetros para a consulta SQL
+    parametros = [f'%{search_term}%', f'%{search_term}%', f'%{search_term}%']
     contacts = execute_query(sql_select_contacts, parametros)
 
+    # Renderiza os contatos encontrados
     context = {
         'contacts': contacts,
         'search_term': search_term,
     }
     return render(request, 'sger/contatos/contacts.html', context)
+
+
 
 
 def funcionarios_view(request):  
