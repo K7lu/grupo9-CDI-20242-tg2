@@ -30,8 +30,9 @@ urlpatterns = [
     path('contatos/', views.contacts_view, name='contatos'),
 
     #Rotas de Funcionários
+    path('funcionarios/cadastrar/', views.cadastrar_funcionario_view, name='cadastrar_funcionario'),
+    path('funcionarios/excluir/<int:funcionario_id>/', views.excluir_funcionario_view, name='excluir_funcionario'),
     path('funcionarios/', views.funcionarios_view, name='funcionarios'),
-    
 
     # Outras rotas
     path('tarefas/', views.tarefas_view, name='tarefas'),
