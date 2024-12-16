@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS Cliente (
     Nome VARCHAR(100) NOT NULL,
     CNPJ CHAR(14) UNIQUE NOT NULL,
     Endereco VARCHAR(255),
-    Telefone VARCHAR(20)
+    Telefone VARCHAR(20),
+    Ativo BOOLEAN DEFAULT FALSE -- Campo para ativação/desativação
 );
 
 -- Tabela Projeto
@@ -55,7 +56,8 @@ CREATE TABLE IF NOT EXISTS Funcionario (
     Nome VARCHAR(100) NOT NULL,
     CPF CHAR(11) UNIQUE NOT NULL,
     Data_Contratacao DATE,
-    Telefone VARCHAR(20)
+    Telefone VARCHAR(20),
+    Ativo BOOLEAN DEFAULT FALSE -- Campo para ativação/desativação
 );
 
 -- Tabela Efetivo (subtipo de funcionario)

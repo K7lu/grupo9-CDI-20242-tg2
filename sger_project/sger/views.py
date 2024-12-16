@@ -1,5 +1,3 @@
-import re
-
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -354,7 +352,7 @@ def usuarios_view(request):
     storage = messages.get_messages(request)
     storage.used = True
     usuarios = User.objects.all()
-    grupos = Group.objects.exclude(name="Master")
+    grupos = Group.objects.exclude(name="Master")           
 
     if request.method == "POST":
         user_id = request.POST.get("user_id")
@@ -362,23 +360,13 @@ def usuarios_view(request):
 
         try:
             user = User.objects.get(id=user_id)
-
-            # Bloquear alteração do grupo do Master
             if user.groups.filter(name="Master").exists():
                 messages.error(request, "Não é permitido alterar o grupo do usuário Master.")
                 return redirect("usuarios")
 
-            # Remove do grupo atual e adiciona ao novo grupo
-            user.groups.clear()
             group = Group.objects.get(name=group_name)
+            user.groups.clear()
             user.groups.add(group)
-
-            # Migração entre tabelas com dados úteis
-            if group_name == "Funcionarios":
-                migrate_to_funcionario(user)
-            elif group_name == "Cliente":
-                migrate_to_cliente(user)
-
             messages.success(request, f"Grupo do usuário {user.username} atualizado com sucesso.")
         except Exception as e:
             messages.error(request, f"Erro: {e}")
@@ -386,92 +374,38 @@ def usuarios_view(request):
 
     return render(request, "sger/usuarios/usuarios.html", {"usuarios": usuarios, "grupos": grupos})
 
-
-def migrate_to_funcionario(user):
-    """
-    Remove o usuário da tabela Cliente e o adiciona na tabela Funcionario com os dados preservados.
-    """
-    # Busca dados na tabela Cliente
-    sql_get_cliente = """
-        SELECT CNPJ, Endereco, Telefone FROM Cliente WHERE Nome = %s
-    """
-    cliente_data = execute_query(sql_get_cliente, [user.get_full_name()])
-
-    if cliente_data:
-        cnpj, endereco, telefone = cliente_data[0]
-    else:
-        cnpj, endereco, telefone = None, None, None
-
-    # Remove da tabela Cliente
-    sql_delete_cliente = "DELETE FROM Cliente WHERE Nome = %s"
-    execute_query(sql_delete_cliente, [user.get_full_name()])
-
-    # Adiciona na tabela Funcionario
-    sql_insert_funcionario = """
-        INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone)
-        VALUES (%s, %s, CURDATE(), %s)
-    """
-    cpf = cnpj[:11] if cnpj else '00000000000'  # Assumindo que o CPF pode vir dos primeiros 11 dígitos do CNPJ
-    execute_query(sql_insert_funcionario, [user.get_full_name(), cpf, telefone])
-
-
-def migrate_to_cliente(user):
-    """
-    Remove o usuário da tabela Funcionario e o adiciona na tabela Cliente com os dados preservados.
-    """
-    # Busca dados na tabela Funcionario
-    sql_get_funcionario = """
-        SELECT CPF, Telefone FROM Funcionario WHERE Nome = %s
-    """
-    funcionario_data = execute_query(sql_get_funcionario, [user.get_full_name()])
-
-    if funcionario_data:
-        cpf, telefone = funcionario_data[0]
-    else:
-        cpf, telefone = None, None
-
-    # Remove da tabela Funcionario
-    sql_delete_funcionario = "DELETE FROM Funcionario WHERE Nome = %s"
-    execute_query(sql_delete_funcionario, [user.get_full_name()])
-
-    # Adiciona na tabela Cliente
-    sql_insert_cliente = """
-        INSERT INTO Cliente (Nome, CNPJ, Endereco, Telefone)
-        VALUES (%s, %s, %s, %s)
-    """
-    cnpj = f"{cpf}0000" if cpf else '00000000000000'  # Gera um CNPJ básico a partir do CPF
-    endereco = 'Endereço Padrão'  # Placeholder
-    execute_query(sql_insert_cliente, [user.get_full_name(), cnpj, endereco, telefone])
-
 #---------------------------------#
 # Funções para gerenciamento de clientes
 @login_required
 @role_required('Master', 'Administradores', 'Funcionarios')
 def clients_list(request):
-    storage = messages.get_messages(request)
-    storage.used = True
     """
-    Lista todos os clientes cadastrados no sistema.
+    Lista todos os clientes ativos cadastrados no sistema.
     """
-    sql_select = "SELECT ID, Nome, CNPJ, Endereco, Telefone FROM Cliente ORDER BY Nome"
+    sql_select = """
+        SELECT ID, Nome, CNPJ, Endereco, Telefone 
+        FROM Cliente 
+        WHERE Ativo = TRUE
+        ORDER BY Nome
+    """
     clients = execute_query(sql_select)
     return render(request, 'sger/clientes/clients_list.html', {'clients': clients})
-
 
 @login_required
 @role_required('Master', 'Administradores')
 def edit_client_view(request, client_id):
-    storage = messages.get_messages(request)
-    storage.used = True
     """
-    Permite editar as informações de um cliente específico.
+    Permite editar as informações de um cliente ativo.
     """
-    # Busca os dados do cliente
-    sql_select = "SELECT ID, Nome, CNPJ, Endereco, Telefone FROM Cliente WHERE ID = %s"
+    sql_select = """
+        SELECT ID, Nome, CNPJ, Endereco, Telefone 
+        FROM Cliente 
+        WHERE ID = %s AND Ativo = TRUE
+    """
     client_data = execute_query(sql_select, [client_id])
 
     if not client_data:
-        messages.error(request, "Cliente não encontrado!")
+        messages.error(request, "Cliente não encontrado ou está inativo!")
         return redirect('clients_list')
 
     if request.method == 'POST':
@@ -481,11 +415,11 @@ def edit_client_view(request, client_id):
         endereco = request.POST.get('endereco')
         telefone = request.POST.get('telefone')
 
-        # Atualiza o cliente no banco de dados
+        # Atualiza os dados do cliente
         sql_update = """
-        UPDATE Cliente
-        SET Nome = %s, CNPJ = %s, Endereco = %s, Telefone = %s
-        WHERE ID = %s
+            UPDATE Cliente
+            SET Nome = %s, CNPJ = %s, Endereco = %s, Telefone = %s
+            WHERE ID = %s
         """
         execute_query(sql_update, [nome, cnpj, endereco, telefone, client_id])
         messages.success(request, 'Cliente atualizado com sucesso!')
@@ -495,26 +429,26 @@ def edit_client_view(request, client_id):
     client = client_data[0]
     return render(request, 'sger/clientes/edit_client.html', {'client': client})
 
-
 @login_required
 @role_required('Master', 'Administradores', 'Funcionarios')
 def clients_search_view(request):
-    storage = messages.get_messages(request)
-    storage.used = True
     """
-    Permite buscar clientes por Nome, CNPJ, Endereço ou Telefone.
+    Permite buscar clientes ativos por Nome, CNPJ, Endereço ou Telefone.
     """
     search_term = request.GET.get('search_term', '').strip()
 
     sql_select = """
         SELECT ID, Nome, CNPJ, Endereco, Telefone 
         FROM Cliente
-        WHERE Nome LIKE %s OR CNPJ LIKE %s OR Endereco LIKE %s OR Telefone LIKE %s
+        WHERE Ativo = TRUE AND (
+            Nome LIKE %s OR CNPJ LIKE %s OR Endereco LIKE %s OR Telefone LIKE %s
+        )
         ORDER BY Nome
     """
     parametros = [f'%{search_term}%', f'%{search_term}%', f'%{search_term}%', f'%{search_term}%']
     clients = execute_query(sql_select, parametros)
     return render(request, 'sger/clientes/clients_list.html', {'clients': clients})
+
 
 #---------------------------------#
 # Funções para gerenciamento de departamentos
@@ -916,4 +850,3 @@ def recursos_view(request):
 
 def alocacoes_view(request):
     return render(request, 'sger/alocacoes/alocacoes.html')
-
