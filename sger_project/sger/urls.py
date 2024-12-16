@@ -33,8 +33,11 @@ urlpatterns = [
     path('funcionarios/', views.funcionarios_view, name='funcionarios'),
     
 
-    # Outras rotas
+    # Rotas de Tarefas
     path('tarefas/', views.tarefas_view, name='tarefas'),
+    path('tarefas/editar/<int:id>/', views.edit_task_view, name='edit_tasks'),
+    path('tarefas/excluir/<int:id>/', views.delete_task_view, name='delete_tasks'),
+
     path('recursos/', views.recursos_view, name='recursos'),
     path('alocacoes/', views.alocacoes_view, name='alocacoes'),
 ]

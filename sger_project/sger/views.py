@@ -678,15 +678,186 @@ def contacts_view(request):
 
 
 
+
+#---------------------------------#
+# Funções para gerenciamento de contatos
+
+@login_required
+def tarefas_view(request):
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    user_groups = request.user.groups.values_list('name', flat=True)
+    is_admin = 'Master' in user_groups or 'Administradores' in user_groups
+    is_client = 'Cliente' in user_groups
+
+    if request.method == 'POST' and is_admin:
+        # Validação dos campos do formulário
+        task_description = request.POST.get('task_description', '').strip()
+        task_start_date = request.POST.get('task_start_date', '').strip()
+        task_end_date = request.POST.get('task_end_date', '').strip()
+        task_status = request.POST.get('task_status', '').strip()
+        project_id = request.POST.get('project_id')
+
+        if not task_description or not project_id:
+            messages.error(request, "Por favor, preencha os campos obrigatórios.")
+            return redirect('tarefas')
+
+        # Insere no banco
+        sql_insert = """
+        INSERT INTO Tarefa (Descricao, Data_Inicio, Data_Termino, Status, Projeto_ID)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        try:
+            execute_query(sql_insert, [task_description, task_start_date, task_end_date, task_status, project_id])
+            messages.success(request, "Tarefa cadastrada com sucesso!")
+        except Exception as e:
+            messages.error(request, f"Erro ao cadastrar tarefa: {e}")
+        return redirect('tarefas')
+
+    # Lógica para listar tarefas
+    if is_client:
+        sql_select = """
+        SELECT Tarefa.ID, Tarefa.Descricao, Tarefa.Data_Inicio, Tarefa.Data_Termino, Tarefa.Status, Projeto.Nome AS Projeto_Nome
+        FROM Tarefa
+        LEFT JOIN Projeto ON Tarefa.Projeto_ID = Projeto.ID
+        WHERE Projeto.Cliente_ID = %s
+        ORDER BY Tarefa.Descricao
+        """
+        tasks = execute_query(sql_select, [request.user.id])
+    else:
+        sql_select = """
+        SELECT Tarefa.ID, Tarefa.Descricao, Tarefa.Data_Inicio, Tarefa.Data_Termino, Tarefa.Status, Projeto.Nome AS Projeto_Nome
+        FROM Tarefa
+        LEFT JOIN Projeto ON Tarefa.Projeto_ID = Projeto.ID
+        ORDER BY Tarefa.Descricao
+        """
+        tasks = execute_query(sql_select)
+
+    # Busca todos os projetos para o formulário
+    projects = []
+    if is_admin:
+        sql_projects = "SELECT ID, Nome FROM Projeto ORDER BY Nome"
+        projects = execute_query(sql_projects)
+
+    context = {
+        'tasks': tasks,
+        'projects': projects,
+        'is_admin': is_admin,
+    }
+    return render(request, 'sger/tarefas/tarefas.html', context)
+
+@login_required
+def edit_task_view(request, id):
+    """
+    Edita os dados de uma tarefa existente.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Busca os dados da tarefa
+    sql_select = """
+    SELECT 
+        Tarefa.ID, 
+        Tarefa.Descricao, 
+        Tarefa.Data_Inicio, 
+        Tarefa.Data_Termino, 
+        Tarefa.Status, 
+        Tarefa.Projeto_ID
+    FROM 
+        Tarefa 
+    WHERE 
+        ID = %s
+    """
+    task_data = execute_query(sql_select, [id])
+
+    if not task_data:
+        messages.error(request, "Tarefa não encontrada!")
+        return redirect('tarefas')
+
+    if request.method == 'POST':
+        descricao = request.POST.get('task_description', '').strip()
+        data_inicio = request.POST.get('task_start_date', '').strip()
+        data_termino = request.POST.get('task_end_date', '').strip()
+        status = request.POST.get('task_status', '').strip()
+        projeto_id = request.POST.get('project_id')
+
+        if not descricao or not projeto_id:
+            messages.error(request, "Por favor, preencha os campos obrigatórios.")
+            return redirect('edit_task', id=id)
+
+        # Atualiza os dados da tarefa
+        sql_update = """
+        UPDATE Tarefa
+        SET Descricao = %s, Data_Inicio = %s, Data_Termino = %s, Status = %s, Projeto_ID = %s
+        WHERE ID = %s
+        """
+        try:
+            execute_query(sql_update, [descricao, data_inicio, data_termino, status, projeto_id, id])
+            messages.success(request, "Tarefa atualizada com sucesso!")
+            return redirect('tarefas')
+        except Exception as e:
+            messages.error(request, f"Erro ao atualizar tarefa: {e}")
+
+    # Busca a lista de projetos para o dropdown
+    sql_select_projects = "SELECT ID, Nome FROM Projeto ORDER BY Nome"
+    projects = execute_query(sql_select_projects)
+
+    context = {
+        'task': {
+            'id': task_data[0][0],
+            'description': task_data[0][1],
+            'start_date': task_data[0][2],
+            'end_date': task_data[0][3],
+            'status': task_data[0][4],
+            'project_id': task_data[0][5],
+        },
+        'projects': projects,
+    }
+    return render(request, 'sger/tarefas/edit_tasks.html', context)
+
+@login_required
+@role_required('Master', 'Administradores')
+def delete_task_view(request, id):
+    """
+    Exclui uma tarefa existente.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Verifica se a tarefa existe
+    sql_select = "SELECT ID FROM Tarefa WHERE ID = %s"
+    task_exists = execute_query(sql_select, [id])
+
+    if not task_exists:
+        messages.error(request, "Tarefa não encontrada!")
+        return redirect('tarefas')
+
+    # Deleta a tarefa
+    sql_delete = "DELETE FROM Tarefa WHERE ID = %s"
+    try:
+        execute_query(sql_delete, [id])
+        messages.success(request, "Tarefa deletada com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Erro ao deletar a tarefa: {e}")
+
+    return redirect('tarefas')
+
+
+def alocacoes_view(request):
+    return render(request, 'sger/alocacoes/alocacoes.html')
+
 def funcionarios_view(request):  
     return render(request, 'sger/funcionarios/funcionarios.html')
 
 def recursos_view(request):
     return render(request, 'sger/recursos/recursos.html') 
-
-def tarefas_view(request):
-    return render(request, 'sger/tarefas/tarefas.html')
-
-def alocacoes_view(request):
-    return render(request, 'sger/alocacoes/alocacoes.html')
-
