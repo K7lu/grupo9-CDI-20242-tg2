@@ -1,6 +1,8 @@
+import re
+
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import check_password, make_password
 from sger.utils.database import executar_consulta
@@ -8,23 +10,35 @@ from django.db import connection
 from django.contrib.auth.models import User, Group
 from django.http import HttpResponseForbidden
 from datetime import datetime
-
 from datetime import datetime
+from sger.utils.decorators import role_required
 
 @login_required
 def home_view(request):
+    storage = messages.get_messages(request)
+    storage.used = True
     user = request.user
-    user_groups = user.groups.values_list('name', flat=True)  
+    user_groups = user.groups.values_list('name', flat=True)
 
     context = {
         'is_master': 'Master' in user_groups,
         'is_admin': 'Administradores' in user_groups or 'Master' in user_groups,
-        'is_employee': 'Funcionario' in user_groups,
+        'is_employee': 'Funcionarios' in user_groups,
         'is_client': 'Cliente' in user_groups,
     }
     return render(request, 'sger/home.html', context)
 
-# Login
+def execute_query(sql, params=None):
+    """
+    Função auxiliar para executar consultas SQL brutas.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params or [])
+        if sql.strip().lower().startswith("select"):
+            return cursor.fetchall()
+        
+#---------------------------------#
+# Funções para autenticação
 def login_view(request):
     storage = messages.get_messages(request)
     storage.used = True
@@ -33,18 +47,30 @@ def login_view(request):
         return redirect('home')  
 
     if request.method == 'POST':
-        username = request.POST.get('username')
+        identifier = request.POST.get('username')  # Pode ser username ou email
         password = request.POST.get('password')
+
+        User = get_user_model()  # Obtém o modelo de usuário atual
+
+        try:
+            # Verifica se o identificador é um email válido
+            if '@' in identifier:
+                user_obj = User.objects.get(email=identifier)
+                username = user_obj.username  # Obtém o nome de usuário para autenticação
+            else:
+                username = identifier  # Considera como nome de usuário
+        except User.DoesNotExist:
+            username = None
 
         # Autentica o usuário
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
             login(request, user)
-            messages.success(request, f"Bem-vindo, {username}!")
+            messages.success(request, f"Bem-vindo, {user.username}!")
             return redirect('home')  # Redireciona para a home
         else:
-            messages.error(request, "Usuário ou senha incorreto. Tente novamente.")
+            messages.error(request, "Usuário ou senha incorretos. Tente novamente.")
 
     return render(request, 'sger/login.html')
 
@@ -56,28 +82,40 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
-
-def execute_query(sql, params=None):
+def format_cpf_cnpj(value):
     """
-    Função auxiliar para executar consultas SQL brutas.
+    Remove a formatação do CPF ou CNPJ (pontos e traços).
     """
-    with connection.cursor() as cursor:
-        cursor.execute(sql, params or [])
-        if sql.strip().lower().startswith("select"):
-            return cursor.fetchall()
-        
+    return re.sub(r'\D', '', value)
 
+def validate_cpf_cnpj(value, is_cpf=True):
+    """
+    Valida CPF ou CNPJ. Retorna True se for válido, False caso contrário.
+    """
+    value = format_cpf_cnpj(value)
+    if is_cpf and len(value) == 11:
+        return True  # Aqui você pode implementar validação mais robusta
+    if not is_cpf and len(value) == 14:
+        return True  # Aqui você pode implementar validação mais robusta
+    return False
 
 def register_view(request):
+    storage = messages.get_messages(request)
+    storage.used = True
     if request.method == 'POST':
         try:
             # Captura dados do formulário
             username = request.POST.get('username')
             email = request.POST.get('email')
             password = request.POST.get('password')
-            first_name = request.POST.get('first_name', '')
-            last_name = request.POST.get('last_name', '')
+            full_name = request.POST.get('full_name', '').strip()  # Captura nome completo
+            cnpj = request.POST.get('cnpj', '').strip()
+            address = request.POST.get('endereco', '').strip()
+            phone = request.POST.get('telefone', '').strip()
             hashed_password = make_password(password)
+
+            # Divide o nome completo em primeiro nome e último nome
+            first_name, last_name = (full_name.split(' ', 1) + [''])[:2]
 
             # Verifica duplicidade de usuário ou email
             sql_check_username = "SELECT COUNT(*) FROM auth_user WHERE username = %s"
@@ -123,6 +161,14 @@ def register_view(request):
             """
             execute_query(sql_insert_group, [user_id, group_id])
 
+            # Se o grupo for Cliente, insere os dados na tabela Cliente
+            if group_name == 'Cliente':
+                sql_insert_client = """
+                    INSERT INTO Cliente (Nome, CNPJ, Endereco, Telefone)
+                    VALUES (%s, %s, %s, %s)
+                """
+                execute_query(sql_insert_client, [full_name, cnpj, address, phone])
+
             # Mensagem de sucesso
             messages.success(request, 'Conta criada com sucesso! Faça login para continuar.')
             return redirect('login')
@@ -134,128 +180,443 @@ def register_view(request):
 
     return render(request, 'sger/register.html')
 
-def clientes_view(request):
-    return render(request, 'sger/clientes/clientes.html')  
+#---------------------------------#
+# Funções para gerenciamento de projetos
 
 @login_required
 def projetos_view(request):
-    def execute_query(sql, params=None):
-        with connection.cursor() as cursor:
-            cursor.execute(sql, params or [])
-            if sql.strip().lower().startswith("select"):
-                return cursor.fetchall()
+    
+    """
+    Lista e gerencia os projetos, filtrando-os dependendo do tipo de usuário.
+    """
+    storage = messages.get_messages(request)
+    storage.used = True
 
-    user_groups = request.user.groups.values_list('name', flat=True)
-    is_admin = 'Master' in user_groups or 'Administradores' in user_groups
-    is_client = 'Cliente' in user_groups
+    # Verifica se o usuário pertence ao grupo 'Cliente'
+    is_client = request.user.groups.filter(name='Cliente').exists()
 
-    if request.method == 'POST' and is_admin:
-        # Validação dos campos do formulário
-        project_name = request.POST.get('project_name', '').strip()
-        project_description = request.POST.get('project_description', '').strip()
-        project_start_date = request.POST.get('project_start_date', '').strip()
-        project_end_date = request.POST.get('project_end_date', '').strip()
-        client_id = request.POST.get('client_id')
-
-        if not project_name or not client_id:
-            messages.error(request, "Por favor, preencha os campos obrigatórios.")
-            return redirect('projetos')
-
-        # Insere no banco
-        sql_insert = """
-        INSERT INTO Projeto (Nome, Descricao, Data_Inicio, Data_Termino, Cliente_ID)
-        VALUES (%s, %s, %s, %s, %s)
+    # Consulta a lista de projetos com filtro para clientes ou sem filtro para admins/masters
+    if is_client:
+        sql_select_projects = """
+            SELECT p.ID, p.Nome, p.Descricao, DATE_FORMAT(p.Data_Inicio, '%%d/%%m/%%Y'), 
+                   DATE_FORMAT(p.Data_Termino, '%%d/%%m/%%Y'), c.Nome 
+            FROM Projeto p 
+            INNER JOIN Cliente c ON p.Cliente_ID = c.ID
+            WHERE c.Nome = %s
+            ORDER BY p.Data_Inicio
         """
-        try:
-            execute_query(sql_insert, [project_name, project_description, project_start_date, project_end_date, client_id])
-            messages.success(request, "Projeto cadastrado com sucesso!")
-        except Exception as e:
-            messages.error(request, f"Erro ao cadastrar projeto: {e}")
+        projects = execute_query(sql_select_projects, [request.user.get_full_name()])
+    else:
+        sql_select_projects = """
+            SELECT p.ID, p.Nome, p.Descricao, DATE_FORMAT(p.Data_Inicio, '%%d/%%m/%%Y'), 
+                   DATE_FORMAT(p.Data_Termino, '%%d/%%m/%%Y'), c.Nome 
+            FROM Projeto p 
+            INNER JOIN Cliente c ON p.Cliente_ID = c.ID
+            ORDER BY p.Data_Inicio
+        """
+        projects = execute_query(sql_select_projects)
+
+    # Para admins, também enviar a lista de clientes para cadastro de novos projetos
+    clients = []
+    if not is_client:
+        sql_select_clients = """
+            SELECT ID, Nome 
+            FROM Cliente 
+            ORDER BY Nome
+        """
+        clients = execute_query(sql_select_clients)
+
+    if request.method == 'POST' and not is_client:
+        # Lida com o cadastro de novos projetos
+        project_name = request.POST.get('project_name')
+        client_id = request.POST.get('client_id')
+        project_description = request.POST.get('project_description')
+        project_start_date = request.POST.get('project_start_date')
+        project_end_date = request.POST.get('project_end_date')
+
+        sql_insert_project = """
+            INSERT INTO Projeto (Nome, Descricao, Data_Inicio, Data_Termino, Cliente_ID) 
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        execute_query(sql_insert_project, [project_name, project_description, project_start_date, project_end_date, client_id])
+        messages.success(request, "Projeto cadastrado com sucesso!")
         return redirect('projetos')
 
-    # Lógica para listar projetos
-    if is_client:
-        sql_select = """
-        SELECT Projeto.ID, Projeto.Nome, Projeto.Descricao, Projeto.Data_Inicio, Projeto.Data_Termino, Cliente.Nome AS Cliente_Nome
-        FROM Projeto
-        LEFT JOIN Cliente ON Projeto.Cliente_ID = Cliente.ID
-        WHERE Cliente.ID = %s
-        ORDER BY Projeto.Nome
-        """
-        projects = execute_query(sql_select, [request.user.id])
-    else:
-        sql_select = """
-        SELECT Projeto.ID, Projeto.Nome, Projeto.Descricao, Projeto.Data_Inicio, Projeto.Data_Termino, Cliente.Nome AS Cliente_Nome
-        FROM Projeto
-        LEFT JOIN Cliente ON Projeto.Cliente_ID = Cliente.ID
-        ORDER BY Projeto.Nome
-        """
-        projects = execute_query(sql_select)
-
-    # Busca todos os clientes para o formulário
-    clients = []
-    if is_admin:
-        sql_clients = "SELECT ID, Nome FROM Cliente ORDER BY Nome"
-        clients = execute_query(sql_clients)
-
-    context = {
+    return render(request, 'sger/projetos/projetos.html', {
         'projects': projects,
         'clients': clients,
-        'is_admin': is_admin,
-    }
-    return render(request, 'sger/projetos/projetos.html', context)
+        'is_client': is_client,
+    })
 
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def edit_project_view(request, project_id):
+    storage = messages.get_messages(request)
+    storage.used = True
+    """
+    Edita um projeto existente.
+    """
+    # Consulta o projeto pelo ID
+    sql_select_project = """
+        SELECT ID, Nome, Descricao, Data_Inicio, Data_Termino, Cliente_ID 
+        FROM Projeto 
+        WHERE ID = %s
+    """
+    project = execute_query(sql_select_project, [project_id])
 
-def recursos_view(request):
-    return render(request, 'sger/recursos/recursos.html') 
-def contatos_view(request):
-    return render(request, 'sger/contatos/contatos.html')
-def tarefas_view(request):
-    return render(request, 'sger/tarefas/tarefas.html')
-def funcionarios_view(request):
-    return render(request, 'sger/funcionarios/funcionarios.html')
-def alocacoes_view(request):
-    return render(request, 'sger/alocacoes/alocacoes.html')
-def departamentos_view(request):
-    return render(request, 'sger/departamentos/departamentos.html')
+    if not project:
+        messages.error(request, "Projeto não encontrado.")
+        return redirect('projetos')
 
+    # Consulta a lista de clientes
+    sql_select_clients = """
+        SELECT ID, Nome 
+        FROM Cliente 
+        ORDER BY Nome
+    """
+    clients = execute_query(sql_select_clients)
+
+    if request.method == 'POST':
+        # Captura os dados do formulário
+        name = request.POST.get('project_name')
+        description = request.POST.get('project_description')
+        start_date = request.POST.get('project_start_date')
+        end_date = request.POST.get('project_end_date')
+        client_id = request.POST.get('client_id')
+
+        # Atualiza o projeto no banco de dados
+        sql_update = """
+            UPDATE Projeto
+            SET Nome = %s, Descricao = %s, Data_Inicio = %s, Data_Termino = %s, Cliente_ID = %s
+            WHERE ID = %s
+        """
+        execute_query(sql_update, [name, description, start_date, end_date, client_id, project_id])
+        messages.success(request, "Projeto atualizado com sucesso!")
+        return redirect('projetos')
+
+    # Envia os dados do projeto e a lista de clientes para o template
+    return render(request, 'sger/projetos/edit_project.html', {
+        'project': {
+            'id': project[0][0],
+            'name': project[0][1],
+            'description': project[0][2],
+            'start_date': project[0][3],
+            'end_date': project[0][4],
+            'client_id': project[0][5],
+        },
+        'clients': clients,
+    })
 
 
 @login_required
+@role_required('Master', 'Administradores')
+def delete_project_view(request, project_id):
+    storage = messages.get_messages(request)
+    storage.used = True
+    """
+    Exclui um projeto existente.
+    """
+    sql_delete = "DELETE FROM Projeto WHERE ID = %s"
+    execute_query(sql_delete, [project_id])
+    messages.success(request, "Projeto excluído com sucesso!")
+    return redirect('projetos')
+
+
+
+#---------------------------------#
+# Funções para gerenciamento de usuários
+
+@login_required
+@role_required('Master')
 def usuarios_view(request):
+    storage = messages.get_messages(request)
+    storage.used = True
     usuarios = User.objects.all()
-    grupos = Group.objects.exclude(name="Master")  # Também exclui "Master" da seleção de grupos
+    grupos = Group.objects.exclude(name="Master")           
 
     if request.method == "POST":
         user_id = request.POST.get("user_id")
         group_name = request.POST.get("group")
 
-        # Valida se o user_id é válido
-        if not user_id or not user_id.isdigit():
-            messages.error(request, "ID de usuário inválido.")
-            return redirect("usuarios")
-
-        # Recupera o usuário e o grupo
         try:
             user = User.objects.get(id=user_id)
-
-            # Evita que o grupo Master seja alterado, mesmo se tentarem manualmente
             if user.groups.filter(name="Master").exists():
                 messages.error(request, "Não é permitido alterar o grupo do usuário Master.")
                 return redirect("usuarios")
 
             group = Group.objects.get(name=group_name)
-            user.groups.clear()  # Remove todos os grupos
-            user.groups.add(group)  # Adiciona o novo grupo
+            user.groups.clear()
+            user.groups.add(group)
             messages.success(request, f"Grupo do usuário {user.username} atualizado com sucesso.")
-
-        except User.DoesNotExist:
-            messages.error(request, "Usuário não encontrado.")
-        except Group.DoesNotExist:
-            messages.error(request, "Grupo selecionado não existe.")
         except Exception as e:
-            messages.error(request, f"Erro inesperado: {e}")
-
+            messages.error(request, f"Erro: {e}")
         return redirect("usuarios")
 
     return render(request, "sger/usuarios/usuarios.html", {"usuarios": usuarios, "grupos": grupos})
+
+#---------------------------------#
+# Funções para gerenciamento de clientes
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def clients_list(request):
+    storage = messages.get_messages(request)
+    storage.used = True
+    """
+    Lista todos os clientes cadastrados no sistema.
+    """
+    sql_select = "SELECT ID, Nome, CNPJ, Endereco, Telefone FROM Cliente ORDER BY Nome"
+    clients = execute_query(sql_select)
+    return render(request, 'sger/clientes/clients_list.html', {'clients': clients})
+
+
+@login_required
+@role_required('Master', 'Administradores')
+def edit_client_view(request, client_id):
+    storage = messages.get_messages(request)
+    storage.used = True
+    """
+    Permite editar as informações de um cliente específico.
+    """
+    # Busca os dados do cliente
+    sql_select = "SELECT ID, Nome, CNPJ, Endereco, Telefone FROM Cliente WHERE ID = %s"
+    client_data = execute_query(sql_select, [client_id])
+
+    if not client_data:
+        messages.error(request, "Cliente não encontrado!")
+        return redirect('clients_list')
+
+    if request.method == 'POST':
+        # Captura os dados enviados pelo formulário
+        nome = request.POST.get('nome')
+        cnpj = request.POST.get('cnpj')
+        endereco = request.POST.get('endereco')
+        telefone = request.POST.get('telefone')
+
+        # Atualiza o cliente no banco de dados
+        sql_update = """
+        UPDATE Cliente
+        SET Nome = %s, CNPJ = %s, Endereco = %s, Telefone = %s
+        WHERE ID = %s
+        """
+        execute_query(sql_update, [nome, cnpj, endereco, telefone, client_id])
+        messages.success(request, 'Cliente atualizado com sucesso!')
+        return redirect('clients_list')
+
+    # Passa os dados do cliente para o template
+    client = client_data[0]
+    return render(request, 'sger/clientes/edit_client.html', {'client': client})
+
+
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def clients_search_view(request):
+    storage = messages.get_messages(request)
+    storage.used = True
+    """
+    Permite buscar clientes por Nome, CNPJ, Endereço ou Telefone.
+    """
+    search_term = request.GET.get('search_term', '').strip()
+
+    sql_select = """
+        SELECT ID, Nome, CNPJ, Endereco, Telefone 
+        FROM Cliente
+        WHERE Nome LIKE %s OR CNPJ LIKE %s OR Endereco LIKE %s OR Telefone LIKE %s
+        ORDER BY Nome
+    """
+    parametros = [f'%{search_term}%', f'%{search_term}%', f'%{search_term}%', f'%{search_term}%']
+    clients = execute_query(sql_select, parametros)
+    return render(request, 'sger/clientes/clients_list.html', {'clients': clients})
+
+#---------------------------------#
+# Funções para gerenciamento de departamentos
+@login_required
+@role_required('Master', 'Administradores')
+def department_register_view(request):
+    """
+    Registra um novo departamento e lista os existentes.
+    """
+    if request.method == 'POST':
+        department_name = request.POST.get('entry_department_name')
+        responsible_employee_id = request.POST.get('entry_responsible_employee')
+
+        # Insere o novo departamento na tabela
+        sql_insert = """
+        INSERT INTO Departamento (Nome, Responsavel_ID)
+        VALUES (%s, %s)
+        """
+        execute_query(sql_insert, [department_name, responsible_employee_id])
+
+        messages.success(request, "Departamento cadastrado com sucesso!")
+        return redirect('department_register')
+
+    # Busca todos os departamentos para exibição na tabela
+    sql_select_departments = """
+        SELECT Departamento.ID, Departamento.Nome, Funcionario.Nome AS Responsavel
+        FROM Departamento
+        LEFT JOIN Funcionario ON Departamento.Responsavel_ID = Funcionario.ID
+        ORDER BY Departamento.Nome
+    """
+    departments = execute_query(sql_select_departments)
+
+    # Busca todos os funcionários para preencher o campo de seleção no formulário
+    sql_select_employees = "SELECT ID, Nome FROM Funcionario ORDER BY Nome"
+    employees = execute_query(sql_select_employees)
+
+    # Passa os dados para o template
+    context = {
+        'departments': departments,
+        'employees': employees,
+    }
+    return render(request, 'sger/departamentos/department_register.html', context)
+
+
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def department_list_view(request):
+    """
+    Lista todos os departamentos com seus responsáveis.
+    """
+    sql_select = """
+    SELECT 
+        Departamento.ID, 
+        Departamento.Nome AS Departamento_Nome, 
+        Funcionario.Nome AS Funcionario_Responsavel
+    FROM 
+        Departamento
+    LEFT JOIN 
+        Funcionario ON Departamento.Responsavel_ID = Funcionario.ID
+    ORDER BY 
+        Departamento.Nome
+    """
+    departments = execute_query(sql_select)
+    user_groups = request.user.groups.values_list('name', flat=True)
+    is_admin_or_master = 'Master' in user_groups or 'Administradores' in user_groups
+
+
+    context = {
+        'departments': departments,
+        'is_admin_or_master': is_admin_or_master,
+    }
+    return render(request, 'sger/departamentos/department_list.html', context)
+
+
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def departments_search_view(request):
+    """
+    Pesquisa departamentos por nome ou responsável.
+    """
+    search_term = request.GET.get('search_term', '').strip()
+
+    sql_select = """
+    SELECT 
+        Departamento.ID, 
+        Departamento.Nome AS Departamento_Nome, 
+        Funcionario.Nome AS Funcionario_Responsavel
+    FROM 
+        Departamento
+    LEFT JOIN 
+        Funcionario ON Departamento.Responsavel_ID = Funcionario.ID
+    WHERE 
+        Departamento.Nome LIKE %s OR Funcionario.Nome LIKE %s
+    ORDER BY 
+        Departamento.Nome
+    """
+    parametros = [f'%{search_term}%', f'%{search_term}%']
+    departments = execute_query(sql_select, parametros)
+
+    context = {
+        'departments': departments,
+    }
+    return render(request, 'sger/departamentos/department_list.html', context)
+
+
+@login_required
+@role_required('Master', 'Administradores')
+def delete_department_view(request, id):
+    """
+    Exclui um departamento existente.
+    """
+    # Verifica se o departamento existe
+    sql_select = "SELECT ID FROM Departamento WHERE ID = %s"
+    department_exists = execute_query(sql_select, [id])
+
+    if not department_exists:
+        messages.error(request, "Departamento não encontrado!")
+        return redirect('department_list')
+
+    # Deleta o departamento
+    sql_delete = "DELETE FROM Departamento WHERE ID = %s"
+    execute_query(sql_delete, [id])
+
+    messages.success(request, "Departamento deletado com sucesso!")
+    return redirect('department_list')
+
+
+@login_required
+@role_required('Master', 'Administradores')
+def edit_department_view(request, id):
+    """
+    Edita os dados de um departamento existente.
+    """
+    # Busca os dados do departamento
+    sql_select = """
+    SELECT 
+        Departamento.ID, 
+        Departamento.Nome, 
+        Departamento.Responsavel_ID 
+    FROM 
+        Departamento 
+    WHERE 
+        ID = %s
+    """
+    department_data = execute_query(sql_select, [id])
+
+    if not department_data:
+        messages.error(request, "Departamento não encontrado!")
+        return redirect('department_list')
+
+    if request.method == 'POST':
+        nome = request.POST.get('nome')
+        funcionario_responsavel_id = request.POST.get('responsible')
+
+        # Atualiza os dados do departamento
+        sql_update = """
+        UPDATE Departamento
+        SET Nome = %s, Responsavel_ID = %s
+        WHERE ID = %s
+        """
+        execute_query(sql_update, [nome, funcionario_responsavel_id, id])
+
+        messages.success(request, "Departamento atualizado com sucesso!")
+        return redirect('department_list')
+
+    # Busca a lista de funcionários para o dropdown
+    sql_select_employees = "SELECT ID, Nome FROM Funcionario ORDER BY Nome"
+    employees = execute_query(sql_select_employees)
+
+    context = {
+        'department': {
+            'id': department_data[0][0],
+            'name': department_data[0][1],
+            'responsible_id': department_data[0][2],
+        },
+        'employees': employees,
+    }
+    return render(request, 'sger/departamentos/department_edit.html', context)
+
+def contatos_view(request):
+    return render(request, 'sger/contatos/contatos.html')
+
+def funcionarios_view(request):  
+    return render(request, 'sger/funcionarios/funcionarios.html')
+
+def recursos_view(request):
+    return render(request, 'sger/recursos/recursos.html') 
+
+def tarefas_view(request):
+    return render(request, 'sger/tarefas/tarefas.html')
+
+def alocacoes_view(request):
+    return render(request, 'sger/alocacoes/alocacoes.html')
+

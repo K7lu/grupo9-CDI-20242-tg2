@@ -7,26 +7,37 @@ from django.apps import apps
 @receiver(post_migrate)
 def create_default_groups(sender, **kwargs): 
     """
-    Cria os grupos padrão 'Master', 'Cliente', 'Funcionario' e 'Administradores'
+    Cria os grupos padrão 'Master', 'Cliente', 'Funcionarios' e 'Administradores'
     automaticamente após a migração e atribui permissões específicas.
     """
     # Grupos padrão
-    grupos = ["Master", "Cliente", "Funcionario", "Administradores"]
+    grupos = ["Master", "Cliente", "Funcionarios", "Administradores"]
 
     # Permissões específicas para cada grupo
     permissoes_grupos = {
         "Master": Permission.objects.all(),  # Master tem todas as permissões
         "Cliente": [],  # Adicione permissões específicas para Clientes
-        "Funcionario": [],  # Adicione permissões específicas para Funcionários
+        "Funcionarios": [],  # Adicione permissões específicas para Funcionários
         "Administradores": [],
     }
 
-    # Atribui permissões de gerenciamento de usuários ao grupo Administradores
+    # Permissões para Funcionarios
+    try:
+        task_model = apps.get_model("sger", "Tarefa")  # Substitua pelo nome correto da app e do modelo
+        content_type_task = ContentType.objects.get_for_model(task_model)
+        permissoes_grupos["Funcionarios"] = Permission.objects.filter(
+            content_type=content_type_task,
+            codename__in=["view_tarefa", "change_tarefa"]  # Permissões específicas para Funcionarios
+        )
+    except Exception as e:
+        print(f"Erro ao buscar permissões para Funcionarios: {e}")
+
+    # Permissões para Administradores
     try:
         user_model = apps.get_model("auth", "User")
-        content_type = ContentType.objects.get_for_model(user_model)
+        content_type_user = ContentType.objects.get_for_model(user_model)
         permissoes_grupos["Administradores"] = Permission.objects.filter(
-            content_type=content_type,
+            content_type=content_type_user,
             codename__in=["add_user", "change_user", "delete_user", "view_user"]
         )
     except Exception as e:

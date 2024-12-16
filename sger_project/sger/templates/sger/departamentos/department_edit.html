@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold text-center text-[#003366] mb-6">Editar Departamento</h2>
+
+    <!-- Formulário de Edição -->
+    <form method="POST">
+        {% csrf_token %}
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="nome" class="block text-sm font-medium text-gray-600">Nome do Departamento</label>
+                <input type="text" id="nome" name="nome" value="{{ department.name }}"
+                       class="w-full border rounded-lg px-4 py-2" required>
+            </div>
+            <div>
+                <label for="responsible" class="block text-sm font-medium text-gray-600">Responsável</label>
+                <select id="responsible" name="responsible" class="w-full border rounded-lg px-4 py-2">
+                    <option value="" disabled>Selecione um responsável</option>
+                    {% for employee in employees %}
+                    <option value="{{ employee.0 }}" {% if employee.0 == department.responsible_id %}selected{% endif %}>
+                        {{ employee.1 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            Atualizar Departamento
+        </button>
+        <a href="{% url 'departments_list' %}" class="mt-4 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 ml-2">
+            Cancelar
+        </a>
+    </form>
+</div>
+{% endblock %}

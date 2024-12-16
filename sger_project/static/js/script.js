@@ -50,3 +50,22 @@ function maskPhone(event) {
     }
     event.target.value = phone;
 }
+
+
+function validateForm() {
+    const cpf = document.getElementById("cpf").value.trim();
+    const cnpj = document.getElementById("cnpj").value.trim();
+    const cpfCnpjRegex = /^[0-9]{11}$|^[0-9]{14}$|^[0-9]{2}\.[0-9]{3}\.[0-9]{3}\/[0-9]{4}\-[0-9]{2}$|^[0-9]{3}\.[0-9]{3}\.[0-9]{3}\-[0-9]{2}$/;
+
+    if (cpf && !cpfCnpjRegex.test(cpf)) {
+        alert("CPF inválido. Verifique a formatação.");
+        return false;
+    }
+
+    if (cnpj && !cpfCnpjRegex.test(cnpj)) {
+        alert("CNPJ inválido. Verifique a formatação.");
+        return false;
+    }
+
+    return true;
+}

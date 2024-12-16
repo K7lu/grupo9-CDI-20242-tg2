@@ -6,9 +6,9 @@
     <p class="text-gray-500 mt-2 mb-6">Gerencie os dados do sistema com eficiência.</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mt-8">
-        <!-- Card Clientes (Clientes e Admins) -->
-        {% if is_client or is_admin or is_master %}
-        <a href="{% url 'clientes' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
+        <!-- Card Clientes (Clientes, Admins e Master) -->
+        {% if is_admin or is_master %}
+        <a href="{% url 'clients_list' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
             <div class="text-[#003366] text-6xl mb-3">
                 <i class="bi bi-building"></i>
             </div>
@@ -17,7 +17,17 @@
         </a>
         {% endif %}
 
-        <!-- Card Projetos (Admins e Master) -->
+        {% if is_client %}
+        <a href="{% url 'projetos' %}" class="card bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition">
+            <div class="text-green-600 text-6xl mb-3">
+                <i class="bi bi-briefcase"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800">Projetos</h3>
+            <p class="text-sm text-gray-500 mt-2">Organize e acompanhe os projetos.</p>
+        </a>
+        {% endif %}
+
+        <!-- Card Projetos, Recursos, Contatos e Alocações (Admins e Master) -->
         {% if is_admin or is_master %}
         <a href="{% url 'projetos' %}" class="card bg-white p-6 rounded-lg shadow-md text-center hover:shadow-lg transition">
             <div class="text-green-600 text-6xl mb-3">
@@ -25,11 +35,14 @@
             </div>
             <h3 class="text-lg font-bold text-gray-800">Projetos</h3>
             <p class="text-sm text-gray-500 mt-2">Organize e acompanhe os projetos.</p>
-        </a>        
-        {% endif %}
-
-        <!-- Card Contatos (Admins e Master) -->
-        {% if is_admin or is_master %}
+        </a>
+        <a href="{% url 'recursos' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
+            <div class="text-red-500 text-6xl mb-3">
+                <i class="bi bi-tools"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800">Recursos</h3>
+            <p class="text-sm text-gray-500 mt-2">Gerencie recursos alocados para as tarefas.</p>
+        </a>
         <a href="{% url 'contatos' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
             <div class="text-blue-600 text-6xl mb-3">
                 <i class="bi bi-person-lines-fill"></i>
@@ -37,9 +50,16 @@
             <h3 class="text-lg font-bold text-gray-800">Contatos</h3>
             <p class="text-sm text-gray-500 mt-2">Gerencie contatos importantes associados aos clientes.</p>
         </a>
+        <a href="{% url 'alocacoes' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
+            <div class="text-purple-500 text-6xl mb-3">
+                <i class="bi bi-calendar-check"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800">Alocações</h3>
+            <p class="text-sm text-gray-500 mt-2">Gerencie alocações de recursos e funcionários.</p>
+        </a>
         {% endif %}
 
-        <!-- Card Tarefas (Funcionários e Master) -->
+        <!-- Card Tarefas (Funcionários, Admins e Master) -->
         {% if is_employee or is_admin or is_master %}
         <a href="{% url 'tarefas' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
             <div class="text-yellow-500 text-6xl mb-3">
@@ -50,18 +70,7 @@
         </a>
         {% endif %}
 
-        <!-- Card Recursos (Admins e Master) -->
-        {% if is_admin or is_master %}
-        <a href="{% url 'recursos' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
-            <div class="text-red-500 text-6xl mb-3">
-                <i class="bi bi-tools"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800">Recursos</h3>
-            <p class="text-sm text-gray-500 mt-2">Gerencie recursos alocados para as tarefas.</p>
-        </a>
-        {% endif %}
-
-        <!-- Card Funcionários (Master) -->
+        <!-- Card Funcionários, Departamentos e Usuários (Apenas Master) -->
         {% if is_master %}
         <a href="{% url 'funcionarios' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
             <div class="text-indigo-600 text-6xl mb-3">
@@ -70,30 +79,13 @@
             <h3 class="text-lg font-bold text-gray-800">Funcionários</h3>
             <p class="text-sm text-gray-500 mt-2">Gerencie funcionários, efetivos e terceirizados.</p>
         </a>
-        {% endif %}
-
-        <!-- Card Alocações (Admins e Master) -->
-        {% if is_admin or is_master %}
-        <a href="{% url 'alocacoes' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
-            <div class="text-purple-500 text-6xl mb-3">
-                <i class="bi bi-calendar-check"></i>
-            </div>
-            <h3 class="text-lg font-bold text-gray-800">Alocações</h3>
-            <p class="text-sm text-gray-500 mt-2">Gerencie alocações de recursos e funcionários.</p>
-        </a>
-        {% endif %}
-
-        <!-- Card Departamentos (Master) -->
-        {% if is_master %}
-        <a href="{% url 'departamentos' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
+        <a href="{% url 'departments_list' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
             <div class="text-pink-500 text-6xl mb-3">
                 <i class="bi bi-diagram-3-fill"></i>
             </div>
             <h3 class="text-lg font-bold text-gray-800">Departamentos</h3>
             <p class="text-sm text-gray-500 mt-2">Organize departamentos e atribua responsáveis.</p>
         </a>
-        {% endif %}
-        {% if is_master %}
         <a href="{% url 'usuarios' %}" class="card bg-white p-6 rounded-lg shadow-md text-center">
             <div class="text-gray-700 text-6xl mb-3">
                 <i class="bi bi-person-badge-fill"></i>
