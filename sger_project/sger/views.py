@@ -114,6 +114,13 @@ def register_view(request):
             phone = request.POST.get('telefone', '').strip()
             hashed_password = make_password(password)
 
+            # Valida e formata o CNPJ
+            try:
+                cnpj = validate_cnpj(cnpj)
+            except ValueError as e:
+                messages.error(request, str(e))
+                return render(request, 'sger/register.html')
+
             # Divide o nome completo em primeiro nome e último nome
             first_name, last_name = (full_name.split(' ', 1) + [''])[:2]
 
@@ -179,6 +186,7 @@ def register_view(request):
             return render(request, 'sger/register.html')
 
     return render(request, 'sger/register.html')
+
 
 #---------------------------------#
 # Funções para gerenciamento de projetos
@@ -329,13 +337,10 @@ def delete_project_view(request, project_id):
 @login_required
 @role_required('Master')
 def usuarios_view(request):
-    """
-    Gerencia usuários e permite alterar grupo, reutilizando dados existentes da tabela Cliente.
-    """
     storage = messages.get_messages(request)
     storage.used = True
     usuarios = User.objects.all()
-    grupos = Group.objects.exclude(name="Master")
+    grupos = Group.objects.exclude(name="Master")           
 
     if request.method == "POST":
         user_id = request.POST.get("user_id")
@@ -343,82 +348,19 @@ def usuarios_view(request):
 
         try:
             user = User.objects.get(id=user_id)
-
-            # Impedir alteração do grupo do Master
             if user.groups.filter(name="Master").exists():
                 messages.error(request, "Não é permitido alterar o grupo do usuário Master.")
                 return redirect("usuarios")
 
-            # Recuperar dados existentes da tabela Cliente
-            nome_completo = f"{user.first_name} {user.last_name}"
-            cliente_data = execute_query(
-                "SELECT CNPJ, Telefone FROM Cliente WHERE Nome = %s",
-                [nome_completo]
-            )
-
-            # Remove o usuário de tabelas anteriores
-            remove_user_from_previous_table(user)
-
-            # Atualizar grupo
             group = Group.objects.get(name=group_name)
             user.groups.clear()
             user.groups.add(group)
-
-            # Adicionar às tabelas apropriadas com dados reutilizados
-            if group_name == "Funcionarios":
-                if cliente_data:
-                    cnpj, telefone = cliente_data[0]
-                    add_to_funcionario(user, cnpj[:11], telefone)  # CPF pode ser derivado do CNPJ
-                else:
-                    messages.error(request, "Dados do cliente não encontrados para promover a funcionário.")
-            elif group_name == "Cliente":
-                if cliente_data:
-                    cnpj, telefone = cliente_data[0]
-                    add_to_cliente(user, cnpj, telefone)
-                else:
-                    messages.error(request, "Erro ao mover para Cliente. Dados incompletos.")
-
             messages.success(request, f"Grupo do usuário {user.username} atualizado com sucesso.")
         except Exception as e:
             messages.error(request, f"Erro: {e}")
         return redirect("usuarios")
 
     return render(request, "sger/usuarios/usuarios.html", {"usuarios": usuarios, "grupos": grupos})
-
-
-def remove_user_from_previous_table(user):
-    """
-    Remove o usuário das tabelas Cliente e Funcionario, caso exista.
-    """
-    nome_completo = f"{user.first_name} {user.last_name}"
-    execute_query("DELETE FROM Cliente WHERE Nome = %s", [nome_completo])
-    execute_query("DELETE FROM Funcionario WHERE Nome = %s", [nome_completo])
-
-
-def add_to_funcionario(user, cpf, telefone):
-    """
-    Adiciona o usuário à tabela Funcionarios.
-    """
-    sql_insert_funcionario = """
-        INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone)
-        VALUES (%s, %s, CURDATE(), %s)
-    """
-    nome_completo = f"{user.first_name} {user.last_name}"
-    execute_query(sql_insert_funcionario, [nome_completo, cpf, telefone])
-
-
-def add_to_cliente(user, cnpj, telefone):
-    """
-    Adiciona o usuário à tabela Clientes.
-    """
-    sql_insert_cliente = """
-        INSERT INTO Cliente (Nome, CNPJ, Endereco, Telefone)
-        VALUES (%s, %s, %s, %s)
-    """
-    nome_completo = f"{user.first_name} {user.last_name}"
-    endereco = "Endereço Padrão"
-    execute_query(sql_insert_cliente, [nome_completo, cnpj, endereco, telefone])
-
 
 #---------------------------------#
 # Funções para gerenciamento de clientes
@@ -744,170 +686,14 @@ def contacts_view(request):
 
 
 
-@login_required
-@role_required('Master', 'Administradores', 'Funcionarios')
-def funcionarios_view(request):
-    """
-    Lista e pesquisa os funcionários cadastrados no sistema.
-    Funcionários só podem ver os próprios dados.
-    Master e Administradores podem gerenciar todos os registros.
-    """
-    search_term = request.GET.get('search_term', '').strip()
-    user = request.user
-    user_groups = user.groups.values_list('name', flat=True)
+def funcionarios_view(request):  
+    return render(request, 'sger/funcionarios/funcionarios.html')
 
-    if 'Funcionarios' in user_groups:
-        # Funcionário visualiza apenas seus próprios dados
-        sql_query = """
-            SELECT 
-                Funcionario.ID, Funcionario.Nome, Funcionario.CPF, 
-                DATE_FORMAT(Funcionario.Data_Contratacao, '%%d/%%m/%%Y') AS Data_Contratacao,
-                Funcionario.Telefone
-            FROM Funcionario
-            WHERE Funcionario.Nome = %s
-        """
-        funcionarios = execute_query(sql_query, [user.get_full_name()])
-    else:
-        # Master e Administradores têm acesso a todos os funcionários
-        sql_query = """
-            SELECT 
-                Funcionario.ID, Funcionario.Nome, Funcionario.CPF, 
-                DATE_FORMAT(Funcionario.Data_Contratacao, '%%d/%%m/%%Y') AS Data_Contratacao,
-                Funcionario.Telefone
-            FROM Funcionario
-            WHERE 
-                Funcionario.Nome LIKE %s OR 
-                Funcionario.CPF LIKE %s OR 
-                Funcionario.Telefone LIKE %s
-            ORDER BY Funcionario.Nome
-        """
-        parametros = [f"%{search_term}%", f"%{search_term}%", f"%{search_term}%"]
-        funcionarios = execute_query(sql_query, parametros)
-
-    # Renderiza a lista de funcionários
-    return render(request, 'sger/funcionarios/funcionarios.html', {
-        'funcionarios': funcionarios,
-        'search_term': search_term,
-        'is_employee': 'Funcionarios' in user_groups,
-        'is_admin_or_master': 'Master' in user_groups or 'Administradores' in user_groups
-    })
-
-
-@login_required
-@role_required('Master', 'Administradores')
 def cadastrar_funcionario_view(request):
-    """
-    Cadastra um funcionário utilizando os dados dos clientes existentes.
-    Apenas clientes não cadastrados como funcionários podem ser promovidos.
-    """
-    if request.method == 'POST':
-        cliente_id = request.POST.get('cliente_id')
+    return render(request, 'sger/funcionarios/cadastrar_funcionario.html')
 
-        try:
-            # Busca os dados do cliente
-            sql_get_cliente = """
-                SELECT Nome, Telefone, CNPJ 
-                FROM Cliente 
-                WHERE ID = %s
-            """
-            cliente_data = execute_query(sql_get_cliente, [cliente_id])
-
-            if not cliente_data:
-                messages.error(request, "Cliente não encontrado.")
-                return redirect('cadastrar_funcionario')
-
-            nome, telefone, cnpj = cliente_data[0]
-            cpf = cnpj[:11]  # Extrai CPF do CNPJ como placeholder
-            data_contratacao = datetime.now().date()
-
-            # Verifica duplicidade na tabela Funcionario
-            sql_check_funcionario = "SELECT COUNT(*) FROM Funcionario WHERE Nome = %s"
-            if execute_query(sql_check_funcionario, [nome])[0][0] > 0:
-                messages.error(request, "Este cliente já é um funcionário.")
-                return redirect('cadastrar_funcionario')
-
-            # Insere o cliente como funcionário
-            sql_insert_funcionario = """
-                INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone) 
-                VALUES (%s, %s, %s, %s)
-            """
-            execute_query(sql_insert_funcionario, [nome, cpf, data_contratacao, telefone])
-
-            # Atualiza o grupo do usuário no sistema
-            sql_update_user_group = """
-                UPDATE auth_user_groups 
-                SET group_id = (
-                    SELECT id FROM auth_group WHERE name = 'Funcionarios'
-                ) 
-                WHERE user_id = (
-                    SELECT id FROM auth_user 
-                    WHERE CONCAT(first_name, ' ', last_name) = %s
-                )
-            """
-            execute_query(sql_update_user_group, [nome])
-
-            messages.success(request, f"Funcionário '{nome}' cadastrado com sucesso!")
-            return redirect('funcionarios')
-
-        except Exception as e:
-            messages.error(request, f"Ocorreu um erro ao cadastrar o funcionário: {e}")
-            return redirect('cadastrar_funcionario')
-
-    # Busca todos os clientes não cadastrados como funcionários
-    sql_get_clientes = """
-        SELECT Cliente.ID, Cliente.Nome, Cliente.Telefone 
-        FROM Cliente 
-        WHERE Cliente.Nome NOT IN (SELECT Nome FROM Funcionario)
-        ORDER BY Cliente.Nome
-    """
-    clientes = execute_query(sql_get_clientes)
-
-    return render(request, 'sger/funcionarios/cadastrar_funcionario.html', {
-        'clientes': clientes,
-    })
-
-
-@login_required
-@role_required('Master', 'Administradores')
 def excluir_funcionario_view(request, funcionario_id):
-    """
-    Exclui um funcionário e reatribui o grupo para Cliente.
-    """
-    try:
-        # Busca o nome do funcionário para atualizações
-        sql_get_funcionario = "SELECT Nome FROM Funcionario WHERE ID = %s"
-        funcionario_data = execute_query(sql_get_funcionario, [funcionario_id])
-
-        if not funcionario_data:
-            messages.error(request, "Funcionário não encontrado.")
-            return redirect('funcionarios')
-
-        nome = funcionario_data[0][0]
-
-        # Remove da tabela Funcionario
-        sql_delete_funcionario = "DELETE FROM Funcionario WHERE ID = %s"
-        execute_query(sql_delete_funcionario, [funcionario_id])
-
-        # Atualiza o grupo do usuário no sistema para Cliente
-        sql_update_user_group = """
-            UPDATE auth_user_groups 
-            SET group_id = (
-                SELECT id FROM auth_group WHERE name = 'Cliente'
-            ) 
-            WHERE user_id = (
-                SELECT id FROM auth_user 
-                WHERE CONCAT(first_name, ' ', last_name) = %s
-            )
-        """
-        execute_query(sql_update_user_group, [nome])
-
-        messages.success(request, f"Funcionário '{nome}' excluído com sucesso!")
-    except Exception as e:
-        messages.error(request, f"Erro ao excluir funcionário: {e}")
-
-    return redirect('funcionarios')
-
-
+    return HttpResponseForbidden("Ação não permitida.")
 
 def recursos_view(request):
     return render(request, 'sger/recursos/recursos.html') 
