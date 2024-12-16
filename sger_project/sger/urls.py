@@ -26,8 +26,10 @@ urlpatterns = [
     path('departamentos/edit/<int:id>/', views.edit_department_view, name='edit_department'),
     path('departamentos/delete/<int:id>/', views.delete_department_view, name='delete_department'),
 
+    # Rotas de contatos
+    path('contatos/', views.contacts_view, name='contatos'),
+
     # Outras rotas
-    path('contatos/', views.contatos_view, name='contatos'),
     path('tarefas/', views.tarefas_view, name='tarefas'),
     path('recursos/', views.recursos_view, name='recursos'),
     path('funcionarios/', views.funcionarios_view, name='funcionarios'),

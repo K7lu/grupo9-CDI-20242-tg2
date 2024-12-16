@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold text-center text-[#003366] mb-6">Lista de Contatos</h2>
+
+    <!-- Formulário de Pesquisa -->
+    <form method="GET" class="mb-6">
+        <input type="text" name="search_term" placeholder="Buscar por nome, email ou telefone"
+               class="w-full border rounded-lg px-4 py-2" value="{{ search_term }}">
+        <button type="submit" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            Pesquisar
+        </button>
+    </form>
+
+    <!-- Lista de Contatos -->
+    <table class="min-w-full bg-white border border-gray-300">
+        <thead>
+        <tr class="bg-gray-100 text-gray-600 uppercase text-sm">
+            <th class="py-3 px-6 text-left">Nome</th>
+            <th class="py-3 px-6 text-left">Email</th>
+            <th class="py-3 px-6 text-left">Telefone</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% if contacts %}
+        {% for contact in contacts %}
+        <tr class="border-b">
+            <td class="py-3 px-6">{{ contact.1 }} {{ contact.2 }}</td>
+            <td class="py-3 px-6">{{ contact.3 }}</td>
+            <td class="py-3 px-6">{{ contact.4|default:"Não informado" }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="3" class="text-center py-3 px-6">Nenhum contato encontrado.</td>
+        </tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

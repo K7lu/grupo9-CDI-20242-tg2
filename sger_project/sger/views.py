@@ -604,9 +604,46 @@ def edit_department_view(request, id):
         'employees': employees,
     }
     return render(request, 'sger/departamentos/department_edit.html', context)
+#---------------------------------#
+# Funções para gerenciamento de contatos
 
-def contatos_view(request):
-    return render(request, 'sger/contatos/contatos.html')
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def contacts_view(request):
+    """
+    Lista e pesquisa todos os contatos de usuários cadastrados no sistema.
+    """
+    search_term = request.GET.get('search_term', '').strip()
+
+    # Consulta SQL para listar contatos com base na pesquisa ou todos se não houver filtro
+    sql_select_contacts = """
+    SELECT 
+        auth_user.id, 
+        auth_user.first_name, 
+        auth_user.last_name, 
+        auth_user.email, 
+        Cliente.Telefone 
+    FROM 
+        auth_user
+    LEFT JOIN 
+        Cliente ON auth_user.id = Cliente.id
+    WHERE 
+        auth_user.first_name LIKE %s OR 
+        auth_user.last_name LIKE %s OR 
+        auth_user.email LIKE %s OR 
+        Cliente.Telefone LIKE %s
+    ORDER BY 
+        auth_user.first_name
+    """
+    parametros = [f'%{search_term}%', f'%{search_term}%', f'%{search_term}%', f'%{search_term}%']
+    contacts = execute_query(sql_select_contacts, parametros)
+
+    context = {
+        'contacts': contacts,
+        'search_term': search_term,
+    }
+    return render(request, 'sger/contatos/contacts.html', context)
+
 
 def funcionarios_view(request):  
     return render(request, 'sger/funcionarios/funcionarios.html')
