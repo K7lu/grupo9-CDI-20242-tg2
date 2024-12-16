@@ -29,9 +29,13 @@ urlpatterns = [
     # Rotas de contatos
     path('contatos/', views.contacts_view, name='contatos'),
 
+    # Rotas de Funcionários
+    path('funcionarios/', views.employee_list_view, name='employee_list'),
+    path('funcionarios/editar/<int:employee_id>/', views.edit_employee_view, name='edit_employee'),
+    path('funcionarios/excluir/<int:employee_id>/', views.delete_employee_view, name='delete_employee'),
+
     # Outras rotas
     path('tarefas/', views.tarefas_view, name='tarefas'),
     path('recursos/', views.recursos_view, name='recursos'),
-    path('funcionarios/', views.funcionarios_view, name='funcionarios'),
     path('alocacoes/', views.alocacoes_view, name='alocacoes'),
 ]

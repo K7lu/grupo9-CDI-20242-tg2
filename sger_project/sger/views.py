@@ -99,6 +99,20 @@ def validate_cpf_cnpj(value, is_cpf=True):
         return True  # Aqui você pode implementar validação mais robusta
     return False
 
+def validate_and_format_phone(phone):
+    """
+    Remove caracteres não numéricos e valida o número de telefone.
+    Retorna o telefone formatado ou levanta um ValueError se inválido.
+    """
+    # Remove caracteres não numéricos
+    clean_phone = re.sub(r'\D', '', phone)
+
+    # Valida o comprimento do telefone (exemplo: 10 ou 11 dígitos)
+    if len(clean_phone) not in [10, 11]:
+        raise ValueError("Número de telefone inválido. Certifique-se de que contém 10 ou 11 dígitos.")
+
+    return clean_phone
+
 def register_view(request):
     storage = messages.get_messages(request)
     storage.used = True
@@ -112,6 +126,14 @@ def register_view(request):
             cnpj = request.POST.get('cnpj', '').strip()
             address = request.POST.get('endereco', '').strip()
             phone = request.POST.get('telefone', '').strip()
+
+            try:
+                # Valida e formata o telefone
+                phone = validate_and_format_phone(phone)
+            except ValueError as e:
+                messages.error(request, str(e))
+                return render(request, 'sger/register.html')
+
             hashed_password = make_password(password)
 
             # Divide o nome completo em primeiro nome e último nome
@@ -332,7 +354,7 @@ def usuarios_view(request):
     storage = messages.get_messages(request)
     storage.used = True
     usuarios = User.objects.all()
-    grupos = Group.objects.exclude(name="Master")           
+    grupos = Group.objects.exclude(name="Master")
 
     if request.method == "POST":
         user_id = request.POST.get("user_id")
@@ -340,19 +362,86 @@ def usuarios_view(request):
 
         try:
             user = User.objects.get(id=user_id)
+
+            # Bloquear alteração do grupo do Master
             if user.groups.filter(name="Master").exists():
                 messages.error(request, "Não é permitido alterar o grupo do usuário Master.")
                 return redirect("usuarios")
 
-            group = Group.objects.get(name=group_name)
+            # Remove do grupo atual e adiciona ao novo grupo
             user.groups.clear()
+            group = Group.objects.get(name=group_name)
             user.groups.add(group)
+
+            # Migração entre tabelas com dados úteis
+            if group_name == "Funcionarios":
+                migrate_to_funcionario(user)
+            elif group_name == "Cliente":
+                migrate_to_cliente(user)
+
             messages.success(request, f"Grupo do usuário {user.username} atualizado com sucesso.")
         except Exception as e:
             messages.error(request, f"Erro: {e}")
         return redirect("usuarios")
 
     return render(request, "sger/usuarios/usuarios.html", {"usuarios": usuarios, "grupos": grupos})
+
+
+def migrate_to_funcionario(user):
+    """
+    Remove o usuário da tabela Cliente e o adiciona na tabela Funcionario com os dados preservados.
+    """
+    # Busca dados na tabela Cliente
+    sql_get_cliente = """
+        SELECT CNPJ, Endereco, Telefone FROM Cliente WHERE Nome = %s
+    """
+    cliente_data = execute_query(sql_get_cliente, [user.get_full_name()])
+
+    if cliente_data:
+        cnpj, endereco, telefone = cliente_data[0]
+    else:
+        cnpj, endereco, telefone = None, None, None
+
+    # Remove da tabela Cliente
+    sql_delete_cliente = "DELETE FROM Cliente WHERE Nome = %s"
+    execute_query(sql_delete_cliente, [user.get_full_name()])
+
+    # Adiciona na tabela Funcionario
+    sql_insert_funcionario = """
+        INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone)
+        VALUES (%s, %s, CURDATE(), %s)
+    """
+    cpf = cnpj[:11] if cnpj else '00000000000'  # Assumindo que o CPF pode vir dos primeiros 11 dígitos do CNPJ
+    execute_query(sql_insert_funcionario, [user.get_full_name(), cpf, telefone])
+
+
+def migrate_to_cliente(user):
+    """
+    Remove o usuário da tabela Funcionario e o adiciona na tabela Cliente com os dados preservados.
+    """
+    # Busca dados na tabela Funcionario
+    sql_get_funcionario = """
+        SELECT CPF, Telefone FROM Funcionario WHERE Nome = %s
+    """
+    funcionario_data = execute_query(sql_get_funcionario, [user.get_full_name()])
+
+    if funcionario_data:
+        cpf, telefone = funcionario_data[0]
+    else:
+        cpf, telefone = None, None
+
+    # Remove da tabela Funcionario
+    sql_delete_funcionario = "DELETE FROM Funcionario WHERE Nome = %s"
+    execute_query(sql_delete_funcionario, [user.get_full_name()])
+
+    # Adiciona na tabela Cliente
+    sql_insert_cliente = """
+        INSERT INTO Cliente (Nome, CNPJ, Endereco, Telefone)
+        VALUES (%s, %s, %s, %s)
+    """
+    cnpj = f"{cpf}0000" if cpf else '00000000000000'  # Gera um CNPJ básico a partir do CPF
+    endereco = 'Endereço Padrão'  # Placeholder
+    execute_query(sql_insert_cliente, [user.get_full_name(), cnpj, endereco, telefone])
 
 #---------------------------------#
 # Funções para gerenciamento de clientes
@@ -604,6 +693,7 @@ def edit_department_view(request, id):
         'employees': employees,
     }
     return render(request, 'sger/departamentos/department_edit.html', context)
+
 #---------------------------------#
 # Funções para gerenciamento de contatos
 
@@ -645,14 +735,184 @@ def contacts_view(request):
     return render(request, 'sger/contatos/contacts.html', context)
 
 
-def funcionarios_view(request):  
-    return render(request, 'sger/funcionarios/funcionarios.html')
+# ---------------------------------#
+# Funções para gerenciamento de funcionários
 
-def recursos_view(request):
-    return render(request, 'sger/recursos/recursos.html') 
+@login_required
+@role_required('Master', 'Administradores', 'Funcionarios')
+def employee_list_view(request):
+    """
+    Lista os funcionários:
+    - Funcionário: vê apenas seus próprios dados.
+    - Master/Administradores: veem todos os funcionários e seus detalhes básicos.
+    """
+    user = request.user
+    user_groups = user.groups.values_list('name', flat=True)
+
+    if 'Funcionarios' in user_groups:
+        # Funcionário vê apenas seus próprios dados
+        sql_select_employees = """
+            SELECT Funcionario.ID, Funcionario.Nome, Funcionario.CPF, 
+                   DATE_FORMAT(Funcionario.Data_Contratacao, '%%d/%%m/%%Y') AS Data_Contratacao, 
+                   Funcionario.Telefone,
+                   COALESCE(Efetivo.Salario, Terceirizado.Valor_Hora, 'N/A') AS Remuneracao,
+                   CASE 
+                       WHEN Efetivo.ID IS NOT NULL THEN 'Efetivo' 
+                       WHEN Terceirizado.ID IS NOT NULL THEN 'Terceirizado' 
+                       ELSE 'Indefinido' 
+                   END AS Tipo
+            FROM Funcionario
+            LEFT JOIN Efetivo ON Funcionario.ID = Efetivo.ID
+            LEFT JOIN Terceirizado ON Funcionario.ID = Terceirizado.ID
+            WHERE Funcionario.ID = %s
+        """
+        employees = execute_query(sql_select_employees, [user.id])
+    else:
+        # Master/Administradores veem todos os funcionários
+        sql_select_employees = """
+            SELECT Funcionario.ID, Funcionario.Nome, Funcionario.CPF, 
+                   DATE_FORMAT(Funcionario.Data_Contratacao, '%%d/%%m/%%Y') AS Data_Contratacao, 
+                   Funcionario.Telefone,
+                   COALESCE(Efetivo.Salario, Terceirizado.Valor_Hora, 'N/A') AS Remuneracao,
+                   CASE 
+                       WHEN Efetivo.ID IS NOT NULL THEN 'Efetivo' 
+                       WHEN Terceirizado.ID IS NOT NULL THEN 'Terceirizado' 
+                       ELSE 'Indefinido' 
+                   END AS Tipo
+            FROM Funcionario
+            LEFT JOIN Efetivo ON Funcionario.ID = Efetivo.ID
+            LEFT JOIN Terceirizado ON Funcionario.ID = Terceirizado.ID
+            ORDER BY Funcionario.Nome
+        """
+        employees = execute_query(sql_select_employees)
+
+    return render(request, 'sger/funcionarios/employee_list.html', {
+        'employees': employees,
+        'is_self_view': 'Funcionarios' in user_groups
+    })
+
+
+@login_required
+def edit_employee_view(request, employee_id):
+    """
+    Edita os dados de um funcionário.
+    Funcionários só podem visualizar e editar seus próprios dados.
+    Master/Administradores podem editar qualquer funcionário, incluindo remuneração.
+    """
+    user = request.user
+    user_groups = user.groups.values_list('name', flat=True)
+
+    # Restrição para Funcionários editarem apenas a si mesmos
+    if 'Funcionarios' in user_groups and user.id != employee_id:
+        messages.error(request, 'Você não tem permissão para editar este funcionário.')
+        return redirect('employee_list')
+
+    # Busca os dados do funcionário
+    sql_select_employee = """
+        SELECT Funcionario.ID, Funcionario.Nome, Funcionario.CPF, 
+               DATE_FORMAT(Funcionario.Data_Contratacao, '%%Y-%%m-%%d'), Funcionario.Telefone,
+               COALESCE(Efetivo.Salario, Terceirizado.Valor_Hora, 'N/A') AS Remuneracao,
+               CASE 
+                   WHEN Efetivo.ID IS NOT NULL THEN 'Efetivo' 
+                   WHEN Terceirizado.ID IS NOT NULL THEN 'Terceirizado' 
+                   ELSE 'Indefinido' 
+               END AS Tipo,
+               Efetivo.Beneficios, Terceirizado.Empresa
+        FROM Funcionario
+        LEFT JOIN Efetivo ON Funcionario.ID = Efetivo.ID
+        LEFT JOIN Terceirizado ON Funcionario.ID = Terceirizado.ID
+        WHERE Funcionario.ID = %s
+    """
+    employee_data = execute_query(sql_select_employee, [employee_id])
+
+    if not employee_data:
+        messages.error(request, 'Funcionário não encontrado!')
+        return redirect('employee_list')
+
+    if request.method == 'POST':
+        # Captura dados do formulário
+        nome = request.POST.get('nome')
+        cpf = request.POST.get('cpf')
+        data_contratacao = request.POST.get('data_contratacao')
+        telefone = request.POST.get('telefone')
+        tipo_contratacao = employee_data[0][6]
+
+        # Apenas Master/Administradores podem alterar remuneração e benefícios
+        if 'Master' in user_groups or 'Administradores' in user_groups:
+            if tipo_contratacao == 'Efetivo':
+                salario = request.POST.get('salario')
+                beneficios = request.POST.get('beneficios')
+
+                sql_update_efetivo = """
+                    UPDATE Efetivo
+                    SET Salario = %s, Beneficios = %s
+                    WHERE ID = %s
+                """
+                execute_query(sql_update_efetivo, [salario, beneficios, employee_id])
+
+            elif tipo_contratacao == 'Terceirizado':
+                empresa = request.POST.get('empresa')
+                valor_hora = request.POST.get('valor_hora')
+
+                sql_update_terceirizado = """
+                    UPDATE Terceirizado
+                    SET Empresa = %s, Valor_Hora = %s
+                    WHERE ID = %s
+                """
+                execute_query(sql_update_terceirizado, [empresa, valor_hora, employee_id])
+
+        sql_update_funcionario = """
+            UPDATE Funcionario
+            SET Nome = %s, CPF = %s, Data_Contratacao = %s, Telefone = %s
+            WHERE ID = %s
+        """
+        execute_query(sql_update_funcionario, [nome, cpf, data_contratacao, telefone, employee_id])
+
+        messages.success(request, 'Funcionário atualizado com sucesso!')
+        return redirect('employee_list')
+
+    context = {
+        'employee': {
+            'id': employee_data[0][0],
+            'nome': employee_data[0][1],
+            'cpf': employee_data[0][2],
+            'data_contratacao': employee_data[0][3],
+            'telefone': employee_data[0][4],
+            'remuneracao': employee_data[0][5],
+            'tipo': employee_data[0][6],
+            'beneficios': employee_data[0][7],
+            'empresa': employee_data[0][8],
+        },
+        'can_edit': 'Master' in user_groups or 'Administradores' in user_groups,
+    }
+    return render(request, 'sger/funcionarios/edit_employee.html', context)
+
+
+@login_required
+@role_required('Master', 'Administradores')
+def delete_employee_view(request, employee_id):
+    """
+    Exclui um funcionário.
+    """
+    sql_delete_funcionario = "DELETE FROM Funcionario WHERE ID = %s"
+    execute_query(sql_delete_funcionario, [employee_id])
+
+    sql_delete_efetivo = "DELETE FROM Efetivo WHERE ID = %s"
+    sql_delete_terceirizado = "DELETE FROM Terceirizado WHERE ID = %s"
+
+    execute_query(sql_delete_efetivo, [employee_id])
+    execute_query(sql_delete_terceirizado, [employee_id])
+
+    messages.success(request, 'Funcionário excluído com sucesso!')
+    return redirect('employee_list')
+
+
 
 def tarefas_view(request):
     return render(request, 'sger/tarefas/tarefas.html')
+
+def recursos_view(request):
+    return render(request, 'sger/recursos/recursos.html') 
 
 def alocacoes_view(request):
     return render(request, 'sger/alocacoes/alocacoes.html')

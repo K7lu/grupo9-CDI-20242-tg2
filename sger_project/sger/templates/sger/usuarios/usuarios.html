@@ -1,52 +1,98 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
-    <h2 class="text-2xl font-bold text-center text-[#003366] mb-6">Gerenciar Usuários</h2>
+<div class="container mx-auto mt-10 bg-white p-4 md:p-8 rounded-lg shadow-lg">
+    <h2 class="text-xl md:text-2xl font-bold text-center text-[#003366] mb-6">Gerenciar Usuários</h2>
 
-    <table class="min-w-full bg-white border border-gray-300">
-        <thead>
-            <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
-                <th class="py-3 px-6 text-left">Usuário</th>
-                <th class="py-3 px-6 text-left">Grupo Atual</th>
-                <th class="py-3 px-6 text-center">Alterar Grupo</th>
-            </tr>
-        </thead>
-        <tbody class="text-gray-600 text-sm font-light">
-            {% for usuario in usuarios %}
-            <tr class="border-b border-gray-200 hover:bg-gray-100">
-                <td class="py-3 px-6 text-left whitespace-nowrap">
-                    <span class="font-medium">{{ usuario.username }}</span>
-                </td>
-                <td class="py-3 px-6 text-left">
-                    {{ usuario.groups.first.name|default:"Nenhum" }}
-                </td>
-                <td class="py-3 px-6 text-center">
-                    {% if usuario.groups.first.name == "Master" %}
-                        <!-- Não permitir alterações no Master -->
-                        <span class="text-gray-500 italic">Master não pode ser alterado</span>
-                    {% else %}
-                        <!-- Formulário para alterar grupo -->
-                        <form method="POST">
-                            {% csrf_token %}
-                            <input type="hidden" name="user_id" value="{{ usuario.id }}">
-                            <select name="group" class="border rounded px-3 py-1">
-                                {% for grupo in grupos %}
-                                <option value="{{ grupo.name }}" 
-                                    {% if usuario.groups.first and grupo.name == usuario.groups.first.name %}selected{% endif %}>
-                                    {{ grupo.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="bg-green-500 text-white px-4 py-1 rounded ml-2 hover:bg-green-600">
-                                Salvar
-                            </button>
-                        </form>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="overflow-x-auto">
+        <!-- Tabela de Usuários -->
+        <table class="min-w-full bg-white border border-gray-300 rounded-lg overflow-hidden">
+            <thead class="hidden md:table-header-group">
+                <tr class="bg-gray-200 text-gray-600 uppercase text-sm">
+                    <th class="py-4 px-4 text-left">Usuário</th>
+                    <th class="py-4 px-4 text-left">Grupo Atual</th>
+                    <th class="py-4 px-4 text-center">Alterar Grupo</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-700 text-sm">
+                {% for usuario in usuarios %}
+                <!-- Linha Desktop -->
+                <tr class="hidden md:table-row border-b border-gray-300 hover:bg-gray-100 transition duration-200">
+                    <td class="py-4 px-4 text-left">
+                        <div class="flex items-center">
+                            <div class="bg-blue-500 text-white w-8 h-8 rounded-full flex justify-center items-center font-bold mr-3">
+                                {{ usuario.username|slice:":1"|upper }}
+                            </div>
+                            <span class="font-semibold">{{ usuario.username }}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 text-left">
+                        <span class="text-blue-600 font-medium">{{ usuario.groups.first.name|default:"Nenhum" }}</span>
+                    </td>
+                    <td class="py-4 px-4 text-center">
+                        {% if usuario.groups.first.name == "Master" %}
+                            <span class="text-gray-500 italic">Grupo não pode ser alterado</span>
+                        {% else %}
+                            <form method="POST" class="flex justify-center items-center">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ usuario.id }}">
+                                <select name="group" class="border rounded px-3 py-2 focus:ring-2 focus:ring-green-500">
+                                    {% for grupo in grupos %}
+                                    <option value="{{ grupo.name }}" 
+                                        {% if usuario.groups.first and grupo.name == usuario.groups.first.name %}selected{% endif %}>
+                                        {{ grupo.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button 
+                                    type="submit" 
+                                    class="ml-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                                >
+                                    Salvar
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <!-- Versão Mobile -->
+                <tr class="md:hidden border-b border-gray-300">
+                    <td class="py-4 px-4">
+                        <div class="font-semibold text-blue-600">{{ usuario.username }}</div>
+                        <div class="text-sm text-gray-500">Grupo Atual: {{ usuario.groups.first.name|default:"Nenhum" }}</div>
+                        {% if usuario.groups.first.name == "Master" %}
+                            <div class="text-gray-500 italic mt-2">Grupo não pode ser alterado</div>
+                        {% else %}
+                            <form method="POST" class="mt-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ usuario.id }}">
+                                <select name="group" class="border rounded px-3 py-2 w-full focus:ring-2 focus:ring-green-500">
+                                    {% for grupo in grupos %}
+                                    <option value="{{ grupo.name }}" 
+                                        {% if usuario.groups.first and grupo.name == usuario.groups.first.name %}selected{% endif %}>
+                                        {{ grupo.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button 
+                                    type="submit" 
+                                    class="mt-2 bg-green-500 text-white px-4 py-2 rounded w-full hover:bg-green-600 focus:ring-2 focus:ring-green-400"
+                                >
+                                    Salvar
+                                </button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center py-6 text-gray-500">
+                        Nenhum usuário encontrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

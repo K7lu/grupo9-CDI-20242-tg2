@@ -2,54 +2,66 @@
 
 {% block content %}
 <div class="container mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
-    <h2 class="text-2xl font-bold text-center text-[#003366] mb-6">Clientes</h2>
+    <!-- Título -->
+    <h2 class="text-3xl font-bold text-center text-[#003366] mb-8">Lista de Clientes</h2>
 
     <!-- Formulário de Pesquisa -->
-    <form method="GET" action="{% url 'clients_search' %}" class="flex justify-center mb-6">
+    <form method="GET" action="{% url 'clients_search' %}" class="flex flex-col md:flex-row justify-center items-center mb-8">
         <input 
             type="text" 
             name="search_term" 
             placeholder="Pesquisar por Nome, CNPJ, Endereço ou Telefone..." 
-            class="border rounded-l px-4 py-2 w-full md:w-2/3 lg:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            class="border border-gray-300 rounded-l px-4 py-2 w-full md:w-2/3 lg:w-1/2 focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
         <button 
             type="submit" 
-            class="bg-blue-500 text-white px-6 py-2 rounded-r hover:bg-blue-600 transition duration-200"
+            class="bg-blue-600 text-white px-6 py-2 rounded-r hover:bg-blue-700 transition duration-200"
         >
             Pesquisar
         </button>
     </form>
 
     <!-- Lista de Clientes -->
-    <table class="min-w-full bg-white border border-gray-300">
-        <thead>
-            <tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
-                <th class="py-3 px-6 text-left">Nome</th>
-                <th class="py-3 px-6 text-left">CNPJ</th>
-                <th class="py-3 px-6 text-left">Endereço</th>
-                <th class="py-3 px-6 text-left">Telefone</th>
-                <th class="py-3 px-6 text-center">Ações</th>
-            </tr>
-        </thead>
-        <tbody class="text-gray-600 text-sm font-light">
-            {% for client in clients %}
-            <tr class="border-b border-gray-200 hover:bg-gray-100">
-                <td class="py-3 px-6 text-left">{{ client.1 }}</td>
-                <td class="py-3 px-6 text-left">{{ client.2 }}</td>
-                <td class="py-3 px-6 text-left">{{ client.3 }}</td>
-                <td class="py-3 px-6 text-left">{{ client.4 }}</td>
-                <td class="py-3 px-6 text-center">
-                    <a href="{% url 'edit_client' client.0 %}" class="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600">
-                        Editar
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" class="text-center py-4">Nenhum cliente encontrado.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-300 shadow-md rounded-lg">
+            <thead>
+                <tr class="bg-[#003366] text-white uppercase text-sm">
+                    <th class="py-3 px-6 text-left">Nome</th>
+                    <th class="py-3 px-6 text-left">CNPJ</th>
+                    <th class="py-3 px-6 text-left">Endereço</th>
+                    <th class="py-3 px-6 text-left">Telefone</th>
+                    <th class="py-3 px-6 text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-600 text-sm">
+                {% for client in clients %}
+                <tr class="border-b hover:bg-gray-100 transition-colors duration-200">
+                    <td class="py-3 px-6">{{ client.1 }}</td>
+                    <td class="py-3 px-6">
+                        {% if client.2 %}
+                            {{ client.2 }}
+                        {% else %}
+                            <span class="italic text-gray-400">Não informado</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-6">{{ client.3 }}</td>
+                    <td class="py-3 px-6">{{ client.4 }}</td>
+                    <td class="py-3 px-6 text-center">
+                        <a href="{% url 'edit_client' client.0 %}" 
+                           class="inline-block bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600 transition duration-200">
+                            Editar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-gray-500 italic">
+                        Nenhum cliente encontrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
