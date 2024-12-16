@@ -205,13 +205,80 @@ def projetos_view(request):
     }
     return render(request, 'sger/projetos/projetos.html', context)
 
+@login_required
+def tarefas_view(request):
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    user_groups = request.user.groups.values_list('name', flat=True)
+    is_admin = 'Master' in user_groups or 'Administradores' in user_groups
+    is_client = 'Cliente' in user_groups
+
+    if request.method == 'POST' and is_admin:
+        # Validação dos campos do formulário
+        task_description = request.POST.get('task_description', '').strip()
+        task_start_date = request.POST.get('task_start_date', '').strip()
+        task_end_date = request.POST.get('task_end_date', '').strip()
+        task_status = request.POST.get('task_status', '').strip()
+        project_id = request.POST.get('project_id')
+
+        if not task_description or not project_id:
+            messages.error(request, "Por favor, preencha os campos obrigatórios.")
+            return redirect('tarefas')
+
+        # Insere no banco
+        sql_insert = """
+        INSERT INTO Tarefa (Descricao, Data_Inicio, Data_Termino, Status, Projeto_ID)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        try:
+            execute_query(sql_insert, [task_description, task_start_date, task_end_date, task_status, project_id])
+            messages.success(request, "Tarefa cadastrada com sucesso!")
+        except Exception as e:
+            messages.error(request, f"Erro ao cadastrar tarefa: {e}")
+        return redirect('tarefas')
+
+    # Lógica para listar tarefas
+    if is_client:
+        sql_select = """
+        SELECT Tarefa.ID, Tarefa.Descricao, Tarefa.Data_Inicio, Tarefa.Data_Termino, Tarefa.Status, Projeto.Nome AS Projeto_Nome
+        FROM Tarefa
+        LEFT JOIN Projeto ON Tarefa.Projeto_ID = Projeto.ID
+        WHERE Projeto.Cliente_ID = %s
+        ORDER BY Tarefa.Descricao
+        """
+        tasks = execute_query(sql_select, [request.user.id])
+    else:
+        sql_select = """
+        SELECT Tarefa.ID, Tarefa.Descricao, Tarefa.Data_Inicio, Tarefa.Data_Termino, Tarefa.Status, Projeto.Nome AS Projeto_Nome
+        FROM Tarefa
+        LEFT JOIN Projeto ON Tarefa.Projeto_ID = Projeto.ID
+        ORDER BY Tarefa.Descricao
+        """
+        tasks = execute_query(sql_select)
+
+    # Busca todos os projetos para o formulário
+    projects = []
+    if is_admin:
+        sql_projects = "SELECT ID, Nome FROM Projeto ORDER BY Nome"
+        projects = execute_query(sql_projects)
+
+    context = {
+        'tasks': tasks,
+        'projects': projects,
+        'is_admin': is_admin,
+    }
+    return render(request, 'sger/tarefas/tarefas.html', context)
+
 
 def recursos_view(request):
     return render(request, 'sger/recursos/recursos.html') 
 def contatos_view(request):
     return render(request, 'sger/contatos/contatos.html')
-def tarefas_view(request):
-    return render(request, 'sger/tarefas/tarefas.html')
+
 def funcionarios_view(request):
     return render(request, 'sger/funcionarios/funcionarios.html')
 def alocacoes_view(request):
