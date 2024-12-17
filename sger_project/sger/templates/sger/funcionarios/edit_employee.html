@@ -40,6 +40,41 @@
                     class="w-full border rounded-lg px-4 py-2" maxlength="15">
             </div>
         </div>
+
+        <!-- Selecione o tipo de funcionário -->
+        <div class="mt-6">
+            <label for="tipo" class="block text-sm font-medium text-gray-600">Tipo de Funcionário</label>
+            <select id="tipo" name="tipo" class="w-full border rounded-lg px-4 py-2" onchange="toggleFields()">
+                <option value="Efetivo" {% if funcionario.tipo == 'Efetivo' %}selected{% endif %}>Efetivo</option>
+                <option value="Terceirizado" {% if funcionario.tipo == 'Terceirizado' %}selected{% endif %}>Terceirizado</option>
+            </select>
+        </div>
+
+       <!-- Campos específicos para Efetivo -->
+        <div id="efetivo-fields" class="mt-6 {% if funcionario.tipo != 'Efetivo' %}hidden{% endif %}">
+            <div>
+                <label for="salario" class="block text-sm font-medium text-gray-600">Salário</label>
+                <input type="text" id="salario" name="salario" value="{{ funcionario.salario|default:'' }}" class="w-full border rounded-lg px-4 py-2">
+            </div>
+            <div>
+                <label for="beneficios" class="block text-sm font-medium text-gray-600">Benefícios</label>
+                <textarea id="beneficios" name="beneficios" class="w-full border rounded-lg px-4 py-2">{{ funcionario.beneficios|default:'' }}</textarea>
+            </div>
+        </div>
+
+        <!-- Campos específicos para Terceirizado -->
+        <div id="terceirizado-fields" class="mt-6 {% if funcionario.tipo != 'Terceirizado' %}hidden{% endif %}">
+            <div>
+                <label for="empresa" class="block text-sm font-medium text-gray-600">Empresa</label>
+                <input type="text" id="empresa" name="empresa" value="{{ funcionario.empresa|default:'' }}" class="w-full border rounded-lg px-4 py-2">
+            </div>
+            <div>
+                <label for="valor_hora" class="block text-sm font-medium text-gray-600">Valor por Hora</label>
+                <input type="text" id="valor_hora" name="valor_hora" value="{{ funcionario.valor_hora|default:'' }}" class="w-full border rounded-lg px-4 py-2">
+            </div>
+        </div>
+
+
         <div class="mt-6">
             <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition">
                 Salvar Alterações
@@ -48,11 +83,8 @@
     </form>
 </div>
 
-<!-- Adiciona a biblioteca Inputmask -->
+<!-- Scripts -->
 <script>
-    // Formata o CNPJ enquanto o usuário digita
-    
-
     // Formata o telefone enquanto o usuário digita
     function formatPhone(input) {
         let value = input.value.replace(/\D/g, ""); // Remove caracteres não numéricos
@@ -61,29 +93,34 @@
             .replace(/^(\d{2})(\d)/, "($1) $2")
             .replace(/(\d{4,5})(\d{4})$/, "$1-$2");
     }
+
     // Função para formatar o CPF
-function formatCPF(input) {
-    let value = input.value.replace(/\D/g, ""); // Remove caracteres não numéricos
-    if (value.length > 11) value = value.substring(0, 11); // Limita a 11 dígitos
-    input.value = value
-        .replace(/^(\d{3})(\d)/, "$1.$2")       // Coloca o primeiro ponto
-        .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3") // Coloca o segundo ponto
-        .replace(/\.(\d{3})(\d)/, ".$1-$2");    // Coloca o traço
-}
-
-// Valida o formulário antes do envio
-function validateForm() {
-    const cpfField = document.getElementById("cpf");
-    const cpf = cpfField.value.replace(/\D/g, ""); // Remove a máscara do CPF
-
-    if (cpf.length !== 11) {
-        alert("O CPF deve conter exatamente 11 dígitos.");
-        cpfField.focus();
-        return false;
+    function formatCPF(input) {
+        let value = input.value.replace(/\D/g, ""); // Remove caracteres não numéricos
+        if (value.length > 11) value = value.substring(0, 11); // Limita a 11 dígitos
+        input.value = value
+            .replace(/^(\d{3})(\d)/, "$1.$2")       // Coloca o primeiro ponto
+            .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3") // Coloca o segundo ponto
+            .replace(/\.(\d{3})(\d)/, ".$1-$2");    // Coloca o traço
     }
-    return true;
-}
 
+    // Função para alternar entre campos Efetivo e Terceirizado
+    function toggleFields() {
+        const tipo = document.getElementById("tipo").value;
+        const efetivoFields = document.getElementById("efetivo-fields");
+        const terceirizadoFields = document.getElementById("terceirizado-fields");
+
+        if (tipo === "Efetivo") {
+            efetivoFields.classList.remove("hidden");
+            terceirizadoFields.classList.add("hidden");
+        } else {
+            efetivoFields.classList.add("hidden");
+            terceirizadoFields.classList.remove("hidden");
+        }
+    }
+
+    // Chama a função de alternar campos ao carregar a página
+    window.onload = toggleFields;
 </script>
 
 {% endblock %}

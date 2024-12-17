@@ -879,17 +879,40 @@ def cadastrar_funcionario_view(request):
         cpf = request.POST.get('cpf', '').strip()
         data_contratacao = request.POST.get('data_contratacao', '').strip()
         telefone = request.POST.get('telefone', '').strip()
+        tipo = request.POST.get('tipo', '').strip()  # Tipo de funcionário: Efetivo ou Terceirizado
 
-        if not nome or not cpf:
-            messages.error(request, "Os campos Nome e CPF são obrigatórios.")
+        if not nome or not cpf or not tipo:
+            messages.error(request, "Os campos Nome, CPF e Tipo são obrigatórios.")
             return redirect('funcionarios')
 
-        sql_insert = """
-        INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone)
-        VALUES (%s, %s, %s, %s)
+        # Inserir na tabela Funcionario
+        sql_insert_funcionario = """
+        INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone, Tipo)
+        VALUES (%s, %s, %s, %s, %s)
         """
         try:
-            execute_query(sql_insert, [nome, cpf, data_contratacao, telefone])
+            execute_query(sql_insert_funcionario, [nome, cpf, data_contratacao, telefone, tipo])
+            funcionario_id = execute_query("SELECT LAST_INSERT_ID()")[0][0]
+
+            # Inserir nas tabelas Efetivo ou Terceirizado com base no tipo
+            if tipo == 'Efetivo':
+                salario = request.POST.get('salario', 0)
+                beneficios = request.POST.get('beneficios', '')
+                sql_insert_efetivo = """
+                INSERT INTO Efetivo (ID, Salario, Beneficios)
+                VALUES (%s, %s, %s)
+                """
+                execute_query(sql_insert_efetivo, [funcionario_id, salario, beneficios])
+
+            elif tipo == 'Terceirizado':
+                empresa = request.POST.get('empresa', '')
+                valor_hora = request.POST.get('valor_hora', 0)
+                sql_insert_terceirizado = """
+                INSERT INTO Terceirizado (ID, Empresa, Valor_Hora)
+                VALUES (%s, %s, %s)
+                """
+                execute_query(sql_insert_terceirizado, [funcionario_id, empresa, valor_hora])
+
             messages.success(request, "Funcionário adicionado com sucesso!")
             return redirect('funcionarios')
         except Exception as e:
@@ -897,7 +920,7 @@ def cadastrar_funcionario_view(request):
 
     # Lógica para listar funcionários
     sql_select = """
-    SELECT ID, Nome, CPF, Data_Contratacao, Telefone
+    SELECT ID, Nome, CPF, Data_Contratacao, Telefone, Tipo
     FROM Funcionario
     ORDER BY Nome
     """
@@ -924,18 +947,19 @@ def editar_funcionario_view(request, id):
             if sql.strip().lower().startswith("select"):
                 return cursor.fetchall()
 
-    # Busca os dados do funcionário
+    # Busca os dados gerais do funcionário
     sql_select = """
     SELECT 
         Funcionario.ID, 
         Funcionario.Nome, 
         Funcionario.CPF, 
         Funcionario.Data_Contratacao, 
-        Funcionario.Telefone 
+        Funcionario.Telefone, 
+        Funcionario.Tipo  -- Inclui o tipo de funcionário
     FROM 
         Funcionario 
     WHERE 
-        ID = %s
+        Funcionario.ID = %s
     """
     employee_data = execute_query(sql_select, [id])
 
@@ -943,40 +967,92 @@ def editar_funcionario_view(request, id):
         messages.error(request, "Funcionário não encontrado!")
         return redirect('funcionarios')
 
+    # Cria um dicionário com os dados do funcionário
+    funcionario = {
+        'id': employee_data[0][0],
+        'nome': employee_data[0][1],
+        'cpf': employee_data[0][2],
+        'data_contratacao': employee_data[0][3],
+        'telefone': employee_data[0][4],
+        'tipo': employee_data[0][5]
+    }
+
+    tipo = funcionario['tipo']
+
+    # Verifica se o funcionário é do tipo Efetivo ou Terceirizado e busca os dados específicos
+    if tipo == 'Efetivo':
+        sql_efetivo = """
+        SELECT Salario, Beneficios
+        FROM Efetivo
+        WHERE ID = %s
+        """
+        efetivo_data = execute_query(sql_efetivo, [id])
+        salario, beneficios = efetivo_data[0] if efetivo_data else (None, None)
+
+        # Atualiza o dicionário com os dados específicos
+        funcionario.update({'salario': salario, 'beneficios': beneficios})
+    elif tipo == 'Terceirizado':
+        sql_terceirizado = """
+        SELECT Empresa, Valor_Hora
+        FROM Terceirizado
+        WHERE ID = %s
+        """
+        terceirizado_data = execute_query(sql_terceirizado, [id])
+        empresa, valor_hora = terceirizado_data[0] if terceirizado_data else (None, None)
+
+        # Atualiza o dicionário com os dados específicos
+        funcionario.update({'empresa': empresa, 'valor_hora': valor_hora})
+
     if request.method == 'POST':
         nome = request.POST.get('nome', '').strip()
         cpf = request.POST.get('cpf', '').strip().replace('.', '').replace('-', '')
         data_contratacao = request.POST.get('data_contratacao', '').strip()
         telefone = request.POST.get('telefone', '').strip()
+        tipo = request.POST.get('tipo', '').strip()
+        salario = request.POST.get('salario', '').strip()
+        beneficios = request.POST.get('beneficios', '').strip()
+        empresa = request.POST.get('empresa', '').strip()
+        valor_hora = request.POST.get('valor_hora', '').strip()
 
         if not nome or not cpf:
             messages.error(request, "Os campos Nome e CPF são obrigatórios.")
             return redirect('editar_funcionario', id=id)
 
+        # Atualiza os dados gerais do funcionário
         sql_update = """
         UPDATE Funcionario
-        SET Nome = %s, CPF = %s, Data_Contratacao = %s, Telefone = %s
+        SET Nome = %s, CPF = %s, Data_Contratacao = %s, Telefone = %s, Tipo = %s
         WHERE ID = %s
         """
         try:
-            execute_query(sql_update, [nome, cpf, data_contratacao, telefone, id])
+            execute_query(sql_update, [nome, cpf, data_contratacao, telefone, tipo, id])
+
+            # Atualiza os dados específicos conforme o tipo de funcionário
+            if tipo == 'Efetivo':
+                sql_update_efetivo = """
+                UPDATE Efetivo
+                SET Salario = %s, Beneficios = %s
+                WHERE ID = %s
+                """
+                execute_query(sql_update_efetivo, [salario, beneficios, id])
+            elif tipo == 'Terceirizado':
+                sql_update_terceirizado = """
+                UPDATE Terceirizado
+                SET Empresa = %s, Valor_Hora = %s
+                WHERE ID = %s
+                """
+                execute_query(sql_update_terceirizado, [empresa, valor_hora, id])
+
             messages.success(request, "Funcionário atualizado com sucesso!")
             return redirect('funcionarios')
         except Exception as e:
             messages.error(request, f"Erro ao atualizar funcionário: {e}")
 
-    # Preparar os dados para preencher o formulário
+    # Passa os dados para o template
     context = {
-        'funcionario': {
-            'id': employee_data[0][0],
-            'nome': employee_data[0][1],
-            'cpf': employee_data[0][2],
-            'data_contratacao': employee_data[0][3],
-            'telefone': employee_data[0][4],
-        },
+        'funcionario': funcionario
     }
     return render(request, 'sger/funcionarios/edit_employee.html', context)
-
 
 @login_required
 @role_required('Master', 'Administradores')
@@ -1007,8 +1083,6 @@ def excluir_funcionario_view(request, id):
         messages.error(request, f"Erro ao deletar funcionário: {e}")
 
     return redirect('funcionarios')
-
-
 #---------------------------------#
 # Funções para gerenciamento de alocaçoes
 
@@ -1041,7 +1115,7 @@ def alocacoes_view(request):
 
         # Inserção no banco para cada funcionário
         sql_insert = """
-        INSERT INTO Alocacao (Funcionario_ID, Projeto_ID, Data_Inicio, Data_Termino)
+        INSERT INTO Alocacao (ID, Projeto_ID, Data_Inicio, Data_Termino)
         VALUES (%s, %s, %s, %s)
         """
         try:
@@ -1061,7 +1135,7 @@ def alocacoes_view(request):
             Alocacao.Data_Inicio, 
             Alocacao.Data_Termino
         FROM Alocacao
-        LEFT JOIN Funcionario ON Alocacao.Funcionario_ID = Funcionario.ID
+        LEFT JOIN Funcionario ON Alocacao.ID = ID
         LEFT JOIN Projeto ON Alocacao.Projeto_ID = Projeto.ID
         ORDER BY Alocacao.Data_Inicio DESC
     """
