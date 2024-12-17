@@ -49,13 +49,14 @@ CREATE TABLE IF NOT EXISTS Tarefa (
     FOREIGN KEY (Projeto_ID) REFERENCES Projeto(ID) -- associação com projeto
 );
 
--- Tabela Funcionario
+-- Tabela Funcionario (tabela principal)
 CREATE TABLE IF NOT EXISTS Funcionario (
-    ID INT AUTO_INCREMENT PRIMARY KEY,
+    ID INT PRIMARY KEY AUTO_INCREMENT,
     Nome VARCHAR(100) NOT NULL,
-    CPF CHAR(11) UNIQUE NOT NULL,
-    Data_Contratacao DATE,
-    Telefone VARCHAR(20)
+    CPF VARCHAR(14) NOT NULL UNIQUE,
+    Data_Contratacao DATE NOT NULL,
+    Telefone VARCHAR(15),
+    Tipo ENUM('Efetivo', 'Terceirizado') NOT NULL
 );
 
 -- Tabela Efetivo (subtipo de funcionario)
@@ -63,7 +64,7 @@ CREATE TABLE IF NOT EXISTS Efetivo (
     ID INT PRIMARY KEY,
     Salario DECIMAL(10, 2) NOT NULL,
     Beneficios TEXT,
-    FOREIGN KEY (ID) REFERENCES Funcionario(ID) -- associação com funcionario
+    FOREIGN KEY (ID) REFERENCES Funcionario(ID) ON DELETE CASCADE -- associação com funcionario
 );
 
 -- Tabela Terceirizado (subtipo de funcionario)
@@ -71,7 +72,7 @@ CREATE TABLE IF NOT EXISTS Terceirizado (
     ID INT PRIMARY KEY,
     Empresa VARCHAR(100) NOT NULL,
     Valor_Hora DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (ID) REFERENCES Funcionario(ID) -- associação com funcionario
+    FOREIGN KEY (ID) REFERENCES Funcionario(ID) ON DELETE CASCADE -- associação com funcionario
 );
 
 -- Tabela Alocacao
