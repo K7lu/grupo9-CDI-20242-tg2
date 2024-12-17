@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block extra_js %}
+<!-- Certifique-se de incluir o jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Importação do Select2 JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-beta.1/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Inicialização do Select2
+        $('#funcionarios').select2({
+            placeholder: "Selecione os funcionários...",
+            allowClear: true,
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %}
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-beta.1/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold text-center text-[#003366] mb-6">Gerenciar Alocações</h2>
+
+    {% if is_admin %}
+    <!-- Formulário de Cadastro de Alocações -->
+    <form method="POST" class="mb-8">
+        {% csrf_token %}
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="projeto_id" class="block text-sm font-medium text-gray-600">Projeto</label>
+                <select id="projeto_id" name="projeto_id" class="w-full border rounded-lg px-4 py-2" required>
+                    <option value="">Selecione um Projeto</option>
+                    {% for projeto in projetos %}
+                    <option value="{{ projeto.0 }}">{{ projeto.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="data_inicio" class="block text-sm font-medium text-gray-600">Data de Início</label>
+                <input type="date" id="data_inicio" name="data_inicio" class="w-full border rounded-lg px-4 py-2" required>
+            </div>
+            <div>
+                <label for="data_termino" class="block text-sm font-medium text-gray-600">Data de Término</label>
+                <input type="date" id="data_termino" name="data_termino" class="w-full border rounded-lg px-4 py-2">
+            </div>
+            <div class="col-span-2">
+                <label for="funcionarios" class="block text-sm font-medium text-gray-600">Funcionários</label>
+                <!-- Seleção com Select2 -->
+                <select id="funcionarios" name="funcionarios" multiple="multiple" class="w-full">
+                    {% for funcionario in funcionarios %}
+                    <option value="{{ funcionario.0 }}">{{ funcionario.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="mt-4 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+            Cadastrar Alocação
+        </button>
+    </form>
+    {% endif %}
+
+    <!-- Lista de Alocações -->
+    <table class="min-w-full bg-white border border-gray-300">
+        <thead>
+            <tr class="bg-gray-100 text-gray-600 uppercase text-sm">
+                <th class="py-3 px-6 text-left">Projeto</th>
+                <th class="py-3 px-6 text-left">Funcionários</th>
+                <th class="py-3 px-6 text-center">Data de Início</th>
+                <th class="py-3 px-6 text-center">Data de Término</th>
+                {% if is_admin %}
+                <th class="py-3 px-6 text-center">Ações</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for alocacao in alocacoes %}
+            <tr class="border-b">
+                <!-- Nome do Projeto -->
+                <td class="py-3 px-6">{{ alocacao.projeto }}</td>
+        
+                <!-- Funcionários -->
+                <td class="py-3 px-6">
+                    {% for funcionario in alocacao.funcionarios %}
+                    <span class="block">{{ funcionario }}</span>
+                    {% endfor %}
+                </td>
+        
+                <!-- Data de Início -->
+                <td class="py-3 px-6 text-center">
+                    {{ alocacao.data_inicio|date:"d/m/Y" }}
+                </td>
+        
+                <!-- Data de Término -->
+                <td class="py-3 px-6 text-center">
+                    {% if alocacao.data_termino %}
+                        {{ alocacao.data_termino|date:"d/m/Y" }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="py-3 px-6 text-center">Nenhuma alocação encontrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        
+    </table>
+</div>
+{% endblock %}

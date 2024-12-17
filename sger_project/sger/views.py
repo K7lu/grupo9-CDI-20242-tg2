@@ -1,5 +1,5 @@
 import re
-
+from collections import defaultdict
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -852,10 +852,6 @@ def delete_task_view(request, id):
 
     return redirect('tarefas')
 
-
-def alocacoes_view(request):
-    return render(request, 'sger/alocacoes/alocacoes.html')
-
 @login_required
 @role_required('Master', 'Administradores')
 def cadastrar_funcionario_view(request):
@@ -1000,7 +996,7 @@ def excluir_funcionario_view(request, id):
 
     if not employee_exists:
         messages.error(request, "Funcionário não encontrado!")
-        return redirect('employee_list')
+        return redirect('funcionarios')
 
     # Deleta o funcionário
     sql_delete = "DELETE FROM Funcionario WHERE ID = %s"
@@ -1010,7 +1006,98 @@ def excluir_funcionario_view(request, id):
     except Exception as e:
         messages.error(request, f"Erro ao deletar funcionário: {e}")
 
-    return redirect('employee_list')
+    return redirect('funcionarios')
+
+
+#---------------------------------#
+# Funções para gerenciamento de alocaçoes
+
+@login_required
+def alocacoes_view(request):
+    """
+    Cria e lista alocações de funcionários em projetos.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Verifica os grupos do usuário
+    user_groups = request.user.groups.values_list('name', flat=True)
+    is_admin = 'Master' in user_groups or 'Administradores' in user_groups
+
+    # Criação de alocação (apenas admins)
+    if request.method == 'POST' and is_admin:
+        projeto_id = request.POST.get('projeto_id')
+        data_inicio = request.POST.get('data_inicio', '').strip()
+        data_termino = request.POST.get('data_termino', '').strip()
+        funcionarios = request.POST.getlist('funcionarios')  # Captura múltiplos IDs de funcionários
+
+        # Validação dos campos obrigatórios
+        if not funcionarios or not projeto_id or not data_inicio:
+            messages.error(request, "Os campos Funcionários, Projeto e Data de Início são obrigatórios.")
+            return redirect('alocacoes')
+
+        # Inserção no banco para cada funcionário
+        sql_insert = """
+        INSERT INTO Alocacao (Funcionario_ID, Projeto_ID, Data_Inicio, Data_Termino)
+        VALUES (%s, %s, %s, %s)
+        """
+        try:
+            for funcionario_id in funcionarios:
+                execute_query(sql_insert, [funcionario_id, projeto_id, data_inicio, data_termino or None])
+            messages.success(request, "Alocações criadas com sucesso!")
+        except Exception as e:
+            messages.error(request, f"Erro ao criar alocação: {e}")
+        return redirect('alocacoes')
+
+    # Listagem de alocações
+    sql_select = """
+        SELECT 
+            Alocacao.ID, 
+            Projeto.Nome AS Projeto_Nome, 
+            Funcionario.Nome AS Funcionario_Nome, 
+            Alocacao.Data_Inicio, 
+            Alocacao.Data_Termino
+        FROM Alocacao
+        LEFT JOIN Funcionario ON Alocacao.Funcionario_ID = Funcionario.ID
+        LEFT JOIN Projeto ON Alocacao.Projeto_ID = Projeto.ID
+        ORDER BY Alocacao.Data_Inicio DESC
+    """
+    raw_alocacoes = execute_query(sql_select)
+
+    # Agrupar alocações pelo ID
+    alocacoes_dict = defaultdict(lambda: {"projeto": "", "funcionarios": [], "data_inicio": "", "data_termino": ""})
+
+    for row in raw_alocacoes:
+        alocacao_id = row[0]
+        alocacoes_dict[alocacao_id]["projeto"] = row[1]
+        alocacoes_dict[alocacao_id]["data_inicio"] = row[3]
+        alocacoes_dict[alocacao_id]["data_termino"] = row[4]
+        alocacoes_dict[alocacao_id]["funcionarios"].append(row[2])
+
+    # Converter o dicionário para lista
+    alocacoes = list(alocacoes_dict.values())
+
+    # Buscar funcionários e projetos para o formulário
+    funcionarios = []
+    projetos = []
+
+    if is_admin:
+        sql_funcionarios = "SELECT ID, Nome FROM Funcionario ORDER BY Nome"
+        sql_projetos = "SELECT ID, Nome FROM Projeto ORDER BY Nome"
+        funcionarios = execute_query(sql_funcionarios)
+        projetos = execute_query(sql_projetos)
+
+    context = {
+        'alocacoes': alocacoes,
+        'funcionarios': funcionarios,
+        'projetos': projetos,
+        'is_admin': is_admin,
+    }
+    return render(request, 'sger/alocacoes/alocacoes.html', context)
+
 
 
 def recursos_view(request):
