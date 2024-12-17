@@ -1115,7 +1115,7 @@ def alocacoes_view(request):
 
         # Inserção no banco para cada funcionário
         sql_insert = """
-        INSERT INTO Alocacao (ID, Projeto_ID, Data_Inicio, Data_Termino)
+        INSERT INTO Alocacao (Funcionario_ID, Projeto_ID, Data_Inicio, Data_Termino)
         VALUES (%s, %s, %s, %s)
         """
         try:
@@ -1135,7 +1135,7 @@ def alocacoes_view(request):
             Alocacao.Data_Inicio, 
             Alocacao.Data_Termino
         FROM Alocacao
-        LEFT JOIN Funcionario ON Alocacao.ID = ID
+        LEFT JOIN Funcionario ON Alocacao.Funcionario_ID = Funcionario.ID
         LEFT JOIN Projeto ON Alocacao.Projeto_ID = Projeto.ID
         ORDER BY Alocacao.Data_Inicio DESC
     """
