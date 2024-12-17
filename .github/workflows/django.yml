@@ -10,7 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 4
       matrix:
         python-version: [3.10.12]
 
@@ -22,10 +21,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install MariaDB dev dependencies
+      # Instalar dependências de desenvolvimento do MySQL/MariaDB
+      - name: Install MySQL dev dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libmariadb-dev
+          sudo apt-get install -y libmysqlclient-dev libmariadb-dev
 
       - name: Install Dependencies
         run: |
