@@ -114,13 +114,6 @@ def register_view(request):
             phone = request.POST.get('telefone', '').strip()
             hashed_password = make_password(password)
 
-            # Valida e formata o CNPJ
-            try:
-                cnpj = validate_cnpj(cnpj)
-            except ValueError as e:
-                messages.error(request, str(e))
-                return render(request, 'sger/register.html')
-
             # Divide o nome completo em primeiro nome e último nome
             first_name, last_name = (full_name.split(' ', 1) + [''])[:2]
 
@@ -186,7 +179,6 @@ def register_view(request):
             return render(request, 'sger/register.html')
 
     return render(request, 'sger/register.html')
-
 
 #---------------------------------#
 # Funções para gerenciamento de projetos
@@ -581,14 +573,14 @@ def delete_department_view(request, id):
 
     if not department_exists:
         messages.error(request, "Departamento não encontrado!")
-        return redirect('department_list')
+        return redirect('departments_list')
 
     # Deleta o departamento
     sql_delete = "DELETE FROM Departamento WHERE ID = %s"
     execute_query(sql_delete, [id])
 
     messages.success(request, "Departamento deletado com sucesso!")
-    return redirect('department_list')
+    return redirect('departments_list')
 
 
 @login_required
@@ -612,7 +604,7 @@ def edit_department_view(request, id):
 
     if not department_data:
         messages.error(request, "Departamento não encontrado!")
-        return redirect('department_list')
+        return redirect('departments_list')
 
     if request.method == 'POST':
         nome = request.POST.get('nome')
@@ -627,7 +619,7 @@ def edit_department_view(request, id):
         execute_query(sql_update, [nome, funcionario_responsavel_id, id])
 
         messages.success(request, "Departamento atualizado com sucesso!")
-        return redirect('department_list')
+        return redirect('departments_list')
 
     # Busca a lista de funcionários para o dropdown
     sql_select_employees = "SELECT ID, Nome FROM Funcionario ORDER BY Nome"
@@ -686,21 +678,340 @@ def contacts_view(request):
 
 
 
-def funcionarios_view(request):  
-    return render(request, 'sger/funcionarios/funcionarios.html')
 
-def cadastrar_funcionario_view(request):
-    return render(request, 'sger/funcionarios/cadastrar_funcionario.html')
+#---------------------------------#
+# Funções para gerenciamento de tarefas
 
-def excluir_funcionario_view(request, funcionario_id):
-    return HttpResponseForbidden("Ação não permitida.")
-
-def recursos_view(request):
-    return render(request, 'sger/recursos/recursos.html') 
-
+@login_required
 def tarefas_view(request):
-    return render(request, 'sger/tarefas/tarefas.html')
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    user_groups = request.user.groups.values_list('name', flat=True)
+    is_admin = 'Master' in user_groups or 'Administradores' in user_groups
+    is_client = 'Cliente' in user_groups
+
+    if request.method == 'POST' and is_admin:
+        # Validação dos campos do formulário
+        task_description = request.POST.get('task_description', '').strip()
+        task_start_date = request.POST.get('task_start_date', '').strip()
+        task_end_date = request.POST.get('task_end_date', '').strip()
+        task_status = request.POST.get('task_status', '').strip()
+        project_id = request.POST.get('project_id')
+
+        if not task_description or not project_id:
+            messages.error(request, "Por favor, preencha os campos obrigatórios.")
+            return redirect('tarefas')
+
+        # Insere no banco
+        sql_insert = """
+        INSERT INTO Tarefa (Descricao, Data_Inicio, Data_Termino, Status, Projeto_ID)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        try:
+            execute_query(sql_insert, [task_description, task_start_date, task_end_date, task_status, project_id])
+            messages.success(request, "Tarefa cadastrada com sucesso!")
+        except Exception as e:
+            messages.error(request, f"Erro ao cadastrar tarefa: {e}")
+        return redirect('tarefas')
+
+    # Lógica para listar tarefas
+    if is_client:
+        sql_select = """
+        SELECT Tarefa.ID, Tarefa.Descricao, Tarefa.Data_Inicio, Tarefa.Data_Termino, Tarefa.Status, Projeto.Nome AS Projeto_Nome
+        FROM Tarefa
+        LEFT JOIN Projeto ON Tarefa.Projeto_ID = Projeto.ID
+        WHERE Projeto.Cliente_ID = %s
+        ORDER BY Tarefa.Descricao
+        """
+        tasks = execute_query(sql_select, [request.user.id])
+    else:
+        sql_select = """
+        SELECT Tarefa.ID, Tarefa.Descricao, Tarefa.Data_Inicio, Tarefa.Data_Termino, Tarefa.Status, Projeto.Nome AS Projeto_Nome
+        FROM Tarefa
+        LEFT JOIN Projeto ON Tarefa.Projeto_ID = Projeto.ID
+        ORDER BY Tarefa.Descricao
+        """
+        tasks = execute_query(sql_select)
+
+    # Busca todos os projetos para o formulário
+    projects = []
+    if is_admin:
+        sql_projects = "SELECT ID, Nome FROM Projeto ORDER BY Nome"
+        projects = execute_query(sql_projects)
+
+    context = {
+        'tasks': tasks,
+        'projects': projects,
+        'is_admin': is_admin,
+    }
+    return render(request, 'sger/tarefas/tarefas.html', context)
+
+@login_required
+def edit_task_view(request, id):
+    """
+    Edita os dados de uma tarefa existente.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Busca os dados da tarefa
+    sql_select = """
+    SELECT 
+        Tarefa.ID, 
+        Tarefa.Descricao, 
+        Tarefa.Data_Inicio, 
+        Tarefa.Data_Termino, 
+        Tarefa.Status, 
+        Tarefa.Projeto_ID
+    FROM 
+        Tarefa 
+    WHERE 
+        ID = %s
+    """
+    task_data = execute_query(sql_select, [id])
+
+    if not task_data:
+        messages.error(request, "Tarefa não encontrada!")
+        return redirect('tarefas')
+
+    if request.method == 'POST':
+        descricao = request.POST.get('task_description')
+        data_inicio = request.POST.get('task_start_date')
+        data_termino = request.POST.get('task_end_date')
+        status = request.POST.get('task_status')
+        projeto_id = request.POST.get('project_id')
+
+        if not descricao or not projeto_id:
+            messages.error(request, "Por favor, preencha os campos obrigatórios.")
+            return redirect('edit_task', id=id)
+
+        # Atualiza os dados da tarefa
+        sql_update = """
+        UPDATE Tarefa
+        SET Descricao = %s, Data_Inicio = %s, Data_Termino = %s, Status = %s, Projeto_ID = %s
+        WHERE ID = %s
+        """
+        try:
+            execute_query(sql_update, [descricao, data_inicio, data_termino, status, projeto_id, id])
+            messages.success(request, "Tarefa atualizada com sucesso!")
+            return redirect('tarefas')
+        except Exception as e:
+            messages.error(request, f"Erro ao atualizar tarefa: {e}")
+
+    # Busca a lista de projetos para o dropdown
+    sql_select_projects = "SELECT ID, Nome FROM Projeto ORDER BY Nome"
+    projects = execute_query(sql_select_projects)
+
+    context = {
+        'task': {
+            'id': task_data[0][0],
+            'description': task_data[0][1],
+            'start_date': task_data[0][2],
+            'end_date': task_data[0][3],
+            'status': task_data[0][4],
+            'project_id': task_data[0][5],
+        },
+        'projects': projects,
+    }
+    return render(request, 'sger/tarefas/edit_tasks.html', context)
+
+@login_required
+@role_required('Master', 'Administradores')
+def delete_task_view(request, id):
+    """
+    Exclui uma tarefa existente.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Verifica se a tarefa existe
+    sql_select = "SELECT ID FROM Tarefa WHERE ID = %s"
+    task_exists = execute_query(sql_select, [id])
+
+    if not task_exists:
+        messages.error(request, "Tarefa não encontrada!")
+        return redirect('tarefas')
+
+    # Deleta a tarefa
+    sql_delete = "DELETE FROM Tarefa WHERE ID = %s"
+    try:
+        execute_query(sql_delete, [id])
+        messages.success(request, "Tarefa deletada com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Erro ao deletar a tarefa: {e}")
+
+    return redirect('tarefas')
+
 
 def alocacoes_view(request):
     return render(request, 'sger/alocacoes/alocacoes.html')
 
+@login_required
+@role_required('Master', 'Administradores')
+def cadastrar_funcionario_view(request):
+    """
+    Adiciona um novo funcionário.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Verifica os grupos de usuários para definir permissões
+    user_groups = request.user.groups.values_list('name', flat=True)
+    is_admin = 'Master' in user_groups or 'Administradores' in user_groups
+
+    # Se o usuário não for admin, exibe uma mensagem e redireciona
+    if not is_admin:
+        messages.error(request, "Você não tem permissão para acessar esta página.")
+        return redirect('funcionarios')
+
+    # Lógica para cadastrar funcionário
+    if request.method == 'POST':
+        nome = request.POST.get('nome', '').strip()
+        cpf = request.POST.get('cpf', '').strip()
+        data_contratacao = request.POST.get('data_contratacao', '').strip()
+        telefone = request.POST.get('telefone', '').strip()
+
+        if not nome or not cpf:
+            messages.error(request, "Os campos Nome e CPF são obrigatórios.")
+            return redirect('funcionarios')
+
+        sql_insert = """
+        INSERT INTO Funcionario (Nome, CPF, Data_Contratacao, Telefone)
+        VALUES (%s, %s, %s, %s)
+        """
+        try:
+            execute_query(sql_insert, [nome, cpf, data_contratacao, telefone])
+            messages.success(request, "Funcionário adicionado com sucesso!")
+            return redirect('funcionarios')
+        except Exception as e:
+            messages.error(request, f"Erro ao adicionar funcionário: {e}")
+
+    # Lógica para listar funcionários
+    sql_select = """
+    SELECT ID, Nome, CPF, Data_Contratacao, Telefone
+    FROM Funcionario
+    ORDER BY Nome
+    """
+    funcionarios = execute_query(sql_select)
+
+    context = {
+        'funcionarios': funcionarios,
+        'is_admin': is_admin,
+    }
+    
+    return render(request, 'sger/funcionarios/cadastrar_funcionario.html', context)
+
+
+
+@login_required
+@role_required('Master', 'Administradores')
+def editar_funcionario_view(request, id):
+    """
+    Edita os dados de um funcionário existente.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Busca os dados do funcionário
+    sql_select = """
+    SELECT 
+        Funcionario.ID, 
+        Funcionario.Nome, 
+        Funcionario.CPF, 
+        Funcionario.Data_Contratacao, 
+        Funcionario.Telefone 
+    FROM 
+        Funcionario 
+    WHERE 
+        ID = %s
+    """
+    employee_data = execute_query(sql_select, [id])
+
+    if not employee_data:
+        messages.error(request, "Funcionário não encontrado!")
+        return redirect('funcionarios')
+
+    if request.method == 'POST':
+        nome = request.POST.get('nome', '').strip()
+        cpf = request.POST.get('cpf', '').strip().replace('.', '').replace('-', '')
+        data_contratacao = request.POST.get('data_contratacao', '').strip()
+        telefone = request.POST.get('telefone', '').strip()
+
+        if not nome or not cpf:
+            messages.error(request, "Os campos Nome e CPF são obrigatórios.")
+            return redirect('editar_funcionario', id=id)
+
+        sql_update = """
+        UPDATE Funcionario
+        SET Nome = %s, CPF = %s, Data_Contratacao = %s, Telefone = %s
+        WHERE ID = %s
+        """
+        try:
+            execute_query(sql_update, [nome, cpf, data_contratacao, telefone, id])
+            messages.success(request, "Funcionário atualizado com sucesso!")
+            return redirect('funcionarios')
+        except Exception as e:
+            messages.error(request, f"Erro ao atualizar funcionário: {e}")
+
+    # Preparar os dados para preencher o formulário
+    context = {
+        'funcionario': {
+            'id': employee_data[0][0],
+            'nome': employee_data[0][1],
+            'cpf': employee_data[0][2],
+            'data_contratacao': employee_data[0][3],
+            'telefone': employee_data[0][4],
+        },
+    }
+    return render(request, 'sger/funcionarios/edit_employee.html', context)
+
+
+@login_required
+@role_required('Master', 'Administradores')
+def excluir_funcionario_view(request, id):
+    """
+    Exclui um funcionário existente.
+    """
+    def execute_query(sql, params=None):
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params or [])
+            if sql.strip().lower().startswith("select"):
+                return cursor.fetchall()
+
+    # Verifica se o funcionário existe
+    sql_select = "SELECT ID FROM Funcionario WHERE ID = %s"
+    employee_exists = execute_query(sql_select, [id])
+
+    if not employee_exists:
+        messages.error(request, "Funcionário não encontrado!")
+        return redirect('employee_list')
+
+    # Deleta o funcionário
+    sql_delete = "DELETE FROM Funcionario WHERE ID = %s"
+    try:
+        execute_query(sql_delete, [id])
+        messages.success(request, "Funcionário deletado com sucesso!")
+    except Exception as e:
+        messages.error(request, f"Erro ao deletar funcionário: {e}")
+
+    return redirect('employee_list')
+
+
+def recursos_view(request):
+    return render(request, 'sger/recursos/recursos.html') 
