@@ -1,3 +1,4 @@
+
 from django.urls import path
 from . import views
 from .views import login_view, register_view
@@ -29,9 +30,10 @@ urlpatterns = [
     # Rotas de contatos
     path('contatos/', views.contacts_view, name='contatos'),
 
-    #Rotas de Funcionários
-    path('funcionarios/', views.funcionarios_view, name='funcionarios'),
-    
+     #Rotas de Funcionários
+    path('funcionarios/cadastrar/', views.cadastrar_funcionario_view, name='funcionarios'),
+    path('funcionarios/excluir/<int:id>/', views.excluir_funcionario_view, name='excluir_funcionario'),
+    path('funcionarios/edit<int:id>', views.editar_funcionario_view, name='editar_funcionario'),
 
     # Rotas de Tarefas
     path('tarefas/', views.tarefas_view, name='tarefas'),
