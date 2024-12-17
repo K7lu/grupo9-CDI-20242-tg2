@@ -16,12 +16,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Install MariaDB development headers
       - name: Install MariaDB dev dependencies
         run: |
           sudo apt-get update
@@ -34,4 +34,5 @@ jobs:
 
       - name: Run Tests
         run: |
+          cd sger_project
           python manage.py test
