@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold text-center text-[#003366] mb-6">Editar Projeto</h2>
+
+    <!-- Mensagens de Erro -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="bg-red-100 text-red-700 px-4 py-2 rounded-md mb-2">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Formulário de Edição -->
+    <form method="POST">
+        {% csrf_token %}
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="project_name" class="block text-sm font-medium text-gray-600">Nome do Projeto</label>
+                <input type="text" id="project_name" name="project_name" value="{{ project.name }}"
+                    class="w-full border rounded-lg px-4 py-2" required>
+            </div>
+            <div>
+                <label for="client_id" class="block text-sm font-medium text-gray-600">Cliente</label>
+                <select id="client_id" name="client_id" class="w-full border rounded-lg px-4 py-2">
+                    {% for client in clients %}
+                    <option value="{{ client.0 }}" {% if project.client_id == client.0 %}selected{% endif %}>
+                        {{ client.1 }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-span-2">
+                <label for="project_description" class="block text-sm font-medium text-gray-600">Descrição</label>
+                <textarea id="project_description" name="project_description"
+                    class="w-full border rounded-lg px-4 py-2">{{ project.description }}</textarea>
+            </div>
+            <div>
+                <label for="project_start_date" class="block text-sm font-medium text-gray-600">Data de Início</label>
+                <input type="date" id="project_start_date" name="project_start_date"
+                    value="{{ project.start_date|date:'Y-m-d' }}" class="w-full border rounded-lg px-4 py-2">
+            </div>
+            <div>
+                <label for="project_end_date" class="block text-sm font-medium text-gray-600">Data de Término</label>
+                <input type="date" id="project_end_date" name="project_end_date"
+                    value="{{ project.end_date|date:'Y-m-d' }}" class="w-full border rounded-lg px-4 py-2">
+            </div>
+        </div>
+        <div class="mt-6">
+            <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition">
+                Salvar Alterações
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.navbar {
+    background-color: #003366;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white !important;
+}
+
+.navbar-nav .nav-link {
+    color: white !important;
+    font-weight: 500;
+    margin: 0 10px;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #ddd !important;
+}
+
+.home-option {
+    display: inline-block;
+    text-align: center;
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+}
+
+.home-option:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+footer {
+    background-color: #000000; /* Fundo preto */
+    color: white;
+    text-align: center;
+    padding: 20px 0; /* Ajuste do padding interno */
+    font-size: 14px;
+    margin-top: 40px; /* Espaçamento entre o conteúdo e o footer */
+}
+
+h1 {
+    color: #003366;
+}
+
+h4 {
+    font-weight: bold;
+}
+
+.btn-custom {
+    background-color: #003366;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.btn-custom:hover {
+    background-color: #002244;
+    transform: scale(1.05);
+}
+
+.login-message {
+    background-color: #e6f4ff;
+    color: #003366;
+    padding: 20px;
+    border: 2px solid #003366;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+    max-width: 600px;
+    margin: 20px auto;
+}

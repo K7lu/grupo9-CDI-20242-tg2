@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg mt-10">
+    <!-- Título e Logo -->
+    <div class="flex justify-center mb-6">
+        <i class="bi bi-person-circle text-6xl text-[#003366]"></i>
+    </div>
+    <h2 class="text-2xl font-bold text-center mb-6 text-[#003366]">Login</h2>
+
+    <!-- Mensagens de Erro ou Sucesso -->
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="text-white px-4 py-2 rounded-lg mb-2
+                            {% if message.tags == 'error' %}bg-red-500{% elif message.tags == 'success' %}bg-green-500{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Formulário -->
+    <form action="{% url 'login' %}" method="POST">
+        {% csrf_token %}
+        
+        <!-- Usuário -->
+        <div class="mb-5 relative">
+            <label for="username" class="block text-sm font-medium text-gray-600">Usuário</label>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <i class="bi bi-person text-lg"></i>
+                </span>
+                <input type="text" id="username" name="username" placeholder="Digite seu usuário"
+                       class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:outline-none transition" required>
+            </div>
+        </div>
+
+        <!-- Senha -->
+        <div class="mb-5 relative">
+            <label for="password" class="block text-sm font-medium text-gray-600">Senha</label>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <i class="bi bi-lock text-lg"></i>
+                </span>
+                <input type="password" id="password" name="password" placeholder="Digite sua senha"
+                       class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#003366] focus:outline-none transition" required>
+            </div>
+        </div>
+
+        <!-- Botão Entrar -->
+        <div class="mt-6">
+            <button type="submit"
+                    class="w-full bg-[#003366] text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-800 transition">
+                <i class="bi bi-box-arrow-in-right mr-2"></i> Entrar
+            </button>
+        </div>
+    </form>
+
+    <!-- Link de Registro -->
+    <div class="text-center mt-4">
+        <p class="text-sm text-gray-600">Ainda não tem uma conta? 
+            <a href="{% url 'register' %}" class="text-blue-600 font-medium hover:underline">Registrar</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
